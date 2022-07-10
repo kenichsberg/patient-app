@@ -19,10 +19,11 @@
 
 (defmulti on-navigate (fn [view _] view))
 (defmethod on-navigate :hs-test-app.views/list [_ params]
-  {:fx [[:dispatch [::fetch-patients (:keywords params)]]]})
+  {:fx [[:dispatch [::fetch-patients
+                    (get params :keywords)
+                    (get params :filters)]]]})
 (defmethod on-navigate :hs-test-app.views/edit [_ params]
-  {:fx [[:dispatch [::fetch-patient-by-id (:id params)]
-         [:dispatch [::init-form {:form-id :patient-reg-form}]]]]})
+  {:fx [[:dispatch [::fetch-patient-by-id (:id params)]]]})
 (defmethod on-navigate :default [_ _] nil)
 
 (rf/reg-event-fx
@@ -44,15 +45,34 @@
  (fn [db [_ res]]
    (assoc db :error res)))
 
+(defn make-query-str [keywords filters]
+  (->> (cond-> []
+         (seq keywords) (conj (str "keywords=" keywords))
+         (seq filters) (concat (map #(str "filter[]="
+                                          (% :field) ","
+                                          (% :operator) ","
+                                          (% :value))
+                                    filters)))
+       (str/join "&")
+       (#(when (seq %) (str "?" %)))))
+
+(comment
+  (make-query-str "aaa" [{:field "a" :operator "a" :value "a"}
+                         {:field "b" :operator "b" :value "b"}])
+  (str/join "&" []))
+
 (rf/reg-event-fx
  ::fetch-patients
- (fn [_ [_ keywords]]
+ (fn [_ [_ keywords filters]]
    {:http-xhrio (assoc request-defaults
                        :method :get
+                       ;:uri (str config/API_URL
+                       ;          "/patients"
+                       ;          (when-not (empty? keywords)
+                       ;            (str "?keywords=" keywords)))
                        :uri (str config/API_URL
                                  "/patients"
-                                 (when-not (empty? keywords)
-                                   (str "?keywords=" keywords)))
+                                 (make-query-str keywords filters))
                        :on-success [::set-patients])}))
 
 (rf/reg-event-db
@@ -62,6 +82,19 @@
           :patients res
           :patient-in-edit nil)))
 
+;(rf/reg-event-fx
+; ::search
+; (fn [_ [_ keywords]]
+;   {::fx/dispatch-debounce [:search [::fetch-patients keywords] 1000]}))
+(rf/reg-event-fx
+ ::search-patients
+ (fn [_ [_ {:keys [keywords filters]}]]
+   {::fx/dispatch-debounce [:search-patients
+                            [::navigate
+                             :hs-test-app.views/list
+                             {:keywords keywords
+                              :filters filters}] 1000]}))
+
 (rf/reg-event-fx
  ::fetch-patient-by-id
  (fn [{:keys [db]} [_ patient-id]]
@@ -69,17 +102,15 @@
     :http-xhrio (assoc request-defaults
                        :method :get
                        :uri (str config/API_URL "/patients/" patient-id)
-                       :on-success [::set-patient-in-edit])}))
+                       :on-success [::set-patient-reg-form])}))
 
 (rf/reg-event-db
- ::set-patient-in-edit
- ;(fn [db [_ res]]
- ;  (assoc db :patient-in-edit res)))
+ ::set-patient-reg-form
  (fn [db [_ res]]
    (-> db
        (assoc :patient-in-edit res)
        (assoc-in [:form :patient-reg-form]
-                 (dissoc res :id :created_at :updated_at)))))
+                 (dissoc res :id)))))
 
 (rf/reg-event-fx
  ::create-patient
@@ -99,8 +130,13 @@
                              :uri (str config/API_URL "/patients/" patient-id)
                              :params values
                              :format (json-request-format)
-                             :on-success [::close-form {:form-id :patient-reg-form}])]
-         [:dispatch [::navigate :hs-test-app.views/list]]]}))
+                             :on-success [::on-success-update])]]}))
+
+(rf/reg-event-fx
+ ::on-success-update
+ (fn [_ _]
+   {:fx [[:dispatch [::navigate :hs-test-app.views/list]]
+         [:dispatch [::close-form {:form-id :patient-reg-form}]]]}))
 
 (rf/reg-event-fx
  ::delete-patient
@@ -111,81 +147,64 @@
                        :format (json-request-format)
                        :on-success [::fetch-patients])}))
 
-(rf/reg-event-db
- ::init-form
- (fn [db [_ {:keys [form-id]}]]
-   (assoc-in db [:form form-id] {})))
+;(rf/reg-event-db
+; ::init-form
+; (fn [db [_ {:keys [form-id]}]]
+;   (assoc-in db [:form form-id] {})))
 
 (rf/reg-event-db
- ::update-form
+ ::update-control
  (fn [db [_ {:keys [form-id control-id value]}]]
    (assoc-in db [:form form-id control-id] value)))
 
-(rf/reg-event-db
- ::close-form
- (fn [db [_ {:keys [form-id]}]]
-   (update db :form dissoc form-id)))
-
-;(rf/reg-event-fx
-; ::search
-; (fn [_ [_ keywords]]
-;   {::fx/dispatch-debounce [:search [::fetch-patients keywords] 1000]}))
-(rf/reg-event-fx
- ::search
- (fn [_ [_ keywords]]
-   {::fx/dispatch-debounce [:search [::navigate 
-                                     :hs-test-app.views/list
-                                     {:keywords keywords}] 1000]}))
-
 (defn update-date-str [old-str target value]
   (-> old-str
-      (str/split #"-")
+      (#(if (empty? %) "--" %))
+      (str/split #"-" -1)
       (cond->
        (= target :year) (assoc 0 value)
        (= target :month) (assoc 1 value)
        (= target :day) (assoc 2 value))
       (#(str/join "-" %))))
 
-(comment
-  (update-date-str "1990-01-01" :month "02"))
-
 (rf/reg-event-db
- ::update-form-date
+ ::update-date-control
  (fn [db [_ {:keys [form-id control-id target value]}]]
    (update-in db [:form form-id control-id] update-date-str target value)))
 
 (rf/reg-event-db
- ::update-filter-form
- (fn [db [_ {:keys [form-id index control-id value]}]]
-   ;(assoc-in db [:form form-id :vals index control-id] value)))
-   (if (= control-id :field)
-     (assoc-in db [:form form-id :vals index] {:index index :field value})
-     (assoc-in db [:form form-id :vals index control-id] value))))
+ ::close-form
+ (fn [db [_ {:keys [form-id]}]]
+   (update db :form dissoc form-id)))
 
 (rf/reg-event-db
- ::push-vec-form
+ ::add-dynamic-fieldset
  (fn [db [_ {:keys [form-id]}]]
-   (let [last-index (get-in db [:form form-id :last-index])
-         index (if (nil? last-index)
-                 0
-                 (inc last-index))]
-     (if (= index 0)
-       (-> db
-           (assoc-in [:form form-id :last-index] index)
-           (assoc-in [:form form-id :vals] [{:index index}]))
-       (-> db
-           (assoc-in [:form form-id :last-index] index)
-           (update-in [:form form-id :vals]
-                      conj
-                      {:index index}))))))
+   (if (vector? (get-in db [:form form-id]))
+     (update-in db [:form form-id] conj {:field nil})
+     (assoc-in db [:form form-id] [{:field nil}]))))
 
-(defn drop-one [coll index]
+(rf/reg-event-db
+ ::upsert-dynamic-control
+ (fn [db [_ {:keys [form-id index control-id value]}]]
+   (if (= control-id :field)
+     (assoc-in db [:form form-id index] {:field value})
+     (assoc-in db [:form form-id index control-id] value))))
+
+(rf/reg-event-db
+ ::upsert-dynamic-date-control
+ (fn [db [_ {:keys [form-id index control-id target value]}]]
+   ;(cond
+   ;  (= control-id :field) (assoc-in db [:form form-id index] {:field value})
+   ;  (= control-id :operator) (assoc-in db [:form form-id index control-id] value)
+   ;  (= control-id :value)
+   (update-in db [:form form-id index control-id] update-date-str target value)));)
+
+(defn drop-index [coll index]
   (vec (concat (subvec coll 0 index)
                (subvec coll (inc index)))))
 
 (rf/reg-event-db
- ::delete-index-from-vec-form
+ ::delete-dynamic-fieldset
  (fn [db [_ {:keys [form-id index]}]]
-   (-> db
-       (update-in [:form form-id :vals] drop-one index)
-       (update-in [:form form-id :last-index] dec))))
+   (update-in db [:form form-id] drop-index index)))

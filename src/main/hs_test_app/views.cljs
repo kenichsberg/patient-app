@@ -10,34 +10,6 @@
 (def get-month (fmt/formatter "MM"))
 (def get-day (fmt/formatter "dd"))
 
-(defn concat-keyword [k string]
-  (-> k
-      (name)
-      (str string)
-      (keyword)))
-
-(defn text-input [on-change control-id label default-value placeholder]
-  [:label label
-   [:input {:name control-id
-            :type "text"
-            :default-value default-value
-            :placeholder placeholder
-            :on-change on-change
-                ;@TODO :on-blur handle-blur
-            }]])
-
-(defn select-picker [on-change control-id label default-value options]
-  [:label label
-   [:select {:name control-id
-             :default-value default-value
-             :on-change on-change
-               ;@TODO :on-blur
-             }
-    [:option {:value ""} "Please select"]
-    (map (fn [o]
-           [:option {:key (:label o) :value (:value o)} (:label o)])
-         options)]])
-
 (def month-options
   [{:label "Jan" :value "01"}
    {:label "Feb" :value "02"}
@@ -51,6 +23,54 @@
    {:label "Oct" :value "10"}
    {:label "Nov" :value "11"}
    {:label "Dec" :value "12"}])
+
+(def gender-options
+  [{:label "Male" :value true}
+   {:label "Female" :value false}])
+
+(def filter-options
+  [{:label "first name" :value "first_name"}
+   {:label "last name" :value "last_name"}
+   {:label "gender" :value "gender"}
+   {:label "birth" :value "birth"}
+   {:label "address" :value "address"}
+   {:label "health_insurance_number" :value "health_insurance_number"}])
+
+(defn modify-keyword [k string]
+  (-> k
+      (name)
+      (str string)
+      (keyword)))
+
+;;@TODO arguments are to be hash-map
+(defn text-input [on-change control-id label default-value placeholder]
+  [:label label
+   [:input {:name control-id
+            :type "text"
+            :default-value default-value
+            :placeholder placeholder
+            :on-change on-change
+                ;@TODO :on-blur handle-blur
+            }]])
+
+;;@TODO arguments are to be hash-map
+(defn select-picker [on-change
+                     control-id
+                     label
+                     default-value
+                     options
+                     with-empty-option]
+  [:label label
+   [:select {:name control-id
+             :default-value default-value
+             :on-change on-change
+               ;@TODO :on-blur
+             }
+    (when (not with-empty-option)
+      [:option {:value ""} "Please select"])
+    (map (fn [o]
+           [:option {:key (:label o) :value (:value o)} (:label o)])
+         options)]])
 
 (comment
   (def d (fmt/parse formatter "1940-11-10"))
@@ -68,93 +88,91 @@
     [:<>
      [:label label]
      [text-input
-      (partial on-change control-id :day)
-      (concat-keyword control-id "-day")
+      (partial on-change :day)
+      (modify-keyword control-id "-day")
       "Day"
       (if (nil? day) "" day)
       "DD"]
      [select-picker
-      (partial on-change control-id :month)
-      (concat-keyword control-id "-month")
+      (partial on-change :month)
+      (modify-keyword control-id "-month")
       "Month"
       (if (nil? month) "" month)
       month-options]
      [text-input
-      (partial on-change control-id :year)
-      (concat-keyword control-id "-year")
+      (partial on-change :year)
+      (modify-keyword control-id "-year")
       "Year"
       (if (nil? year) "" year)
       "YYYY"]]))
 
-(defn on-change-for-reg-form [control-id event]
+(defn reg-control [control-id event]
   (rf/dispatch
-   [::events/update-form {:form-id :patient-reg-form
-                          :control-id control-id
-                          :value (-> event
-                                     .-target
-                                     .-value)}]))
+   [::events/update-control {:form-id :patient-reg-form
+                             :control-id control-id
+                             :value (-> event
+                                        .-target
+                                        .-value)}]))
 
-(defn on-change-for-filter-form [index control-id event]
+(defn reg-dynamic-control [index control-id event]
   (rf/dispatch
-   [::events/update-filter-form {:form-id :patient-filter-form
-                                 :index index
-                                 :control-id control-id
-                                 :value (-> event
-                                            .-target
-                                            .-value)}]))
+   [::events/upsert-dynamic-control {:form-id :patient-filter-form
+                                     :index index
+                                     :control-id control-id
+                                     :value (-> event
+                                                .-target
+                                                .-value)}]))
 
-(defn on-change-date-for-reg-form [control-id target event]
+(defn reg-date-control [control-id target event]
   (rf/dispatch
-   [::events/update-form-date {:form-id :patient-reg-form
-                               :control-id control-id
-                               :target target
-                               :value (-> event
-                                          .-target
-                                          .-value)}]))
+   [::events/update-date-control {:form-id :patient-reg-form
+                                  :control-id control-id
+                                  :target target
+                                  :value (-> event
+                                             .-target
+                                             .-value)}]))
 
-(def options-for-gender
-  [{:label "Male" :value true}
-   {:label "Female" :value false}])
-
-(def options-for-patient-filter
-  [{:label "first name" :value "first_name"}
-   {:label "last name" :value "last_name"}
-   {:label "gender" :value "gender"}
-   {:label "birth" :value "birth"}
-   {:label "address" :value "address"}
-   {:label "health_insurance_number" :value "health_insurance_number"}])
+(defn reg-dynamic-date-control [index control-id target event]
+  (rf/dispatch
+   [::events/upsert-dynamic-date-control {:form-id :patient-filter-form
+                                          :index index
+                                          :control-id control-id
+                                          :target target
+                                          :value (-> event
+                                                     .-target
+                                                     .-value)}]))
 
 (defn patient-reg-form [handle-submit]
   [:form {:id :patient-reg-form
           :on-submit handle-submit}
    [text-input
-    (partial on-change-for-reg-form :first_name)
+    (partial reg-control :first_name)
     :first_name
     "first name"
     @(rf/subscribe [::subs/form-control-value :patient-reg-form :first_name])]
    [text-input
-    (partial on-change-for-reg-form :last_name)
+    (partial reg-control :last_name)
     :last_name
     "last name"
     @(rf/subscribe [::subs/form-control-value :patient-reg-form :last_name])]
    [select-picker
-    (partial on-change-for-reg-form :gender)
+    (partial reg-control :gender)
     :gender
     "gender"
     @(rf/subscribe [::subs/form-control-value :patient-reg-form :gender])
-    options-for-gender]
+    gender-options]
    [date-input
-    on-change-date-for-reg-form
+    (partial reg-date-control :birth)
     :birth
     "birth"
     @(rf/subscribe [::subs/form-control-value :patient-reg-form :birth])]
    [text-input
-    (partial on-change-for-reg-form :address)
+    (partial reg-control :address)
     :address
     "address"
     @(rf/subscribe [::subs/form-control-value :patient-reg-form :address])]
    [text-input
-    (partial on-change-for-reg-form :health_insurance_number)
+    (partial reg-control :health_insurance_number)
     :health_insurance_number
     "health insurance number"
     @(rf/subscribe [::subs/form-control-value :patient-reg-form :health_insurance_number])]
@@ -163,68 +181,102 @@
              }
     "Save"]])
 
+(defn gender-filter-input [index operator value]
+  [:<>
+   [select-picker
+    (partial reg-dynamic-control index :operator)
+    (keyword (str "operator-" index))
+    "operator"
+    operator
+    [{:label "equals" :value "eq"}]
+    true]
+   [select-picker
+    (partial reg-dynamic-control index :value)
+    (keyword (str "value-" index))
+    "value"
+    value
+    gender-options]])
+
 (defn date-filter-input [index operator value]
   [:<>
    [select-picker
-    ;(@TODO)
-    (partial on-change-for-filter-form index :operator)
+    (partial reg-dynamic-control index :operator)
     (keyword (str "operator-" index))
     "operator"
     operator
     [{:label "after" :value "gt"}
      {:label "before" :value "lt"}
-     {:label "equal" :value "eq"}]]
+     {:label "equals" :value "eq"}]]
    [date-input
-    ;(@TODO)
-    (partial on-change-for-filter-form index :value)
+    (partial reg-dynamic-date-control index :value)
     (keyword (str "value-" index))
     "value"
     value]])
 
+(defn text-filter-input [index operator value]
+  [:<>
+   [select-picker
+    (partial reg-dynamic-control index :operator)
+    (keyword (str "operator-" index))
+    "operator"
+    operator
+    [{:label "equals" :value "eq"}
+     {:label "contains" :value "cont"}]]
+   [text-input
+    (partial reg-dynamic-control index :value)
+    (keyword (str "value-" index))
+    "value"
+    value]])
+
+;(defn conditional-input [index field operator value]
+;  (cond
+;    (nil? field) nil
+;    (= field "gender") [select-picker
+;                        (partial reg-dynamic-control index :value)
+;                        (keyword (str "value-" index))
+;                        "value"
+;                        value
+;                        gender-options]
+;    (= field "birth") [date-filter-input index operator value]
+;    :else [text-input
+;           (partial reg-dynamic-control index :value)
+;           (keyword (str "value-" index))
+;           "value"
+;           value]))
 (defn conditional-input [index field operator value]
   (cond
     (nil? field) nil
-    (= field "gender") [select-picker
-                        (partial on-change-for-filter-form index :value)
-                        (keyword (str "value-" index))
-                        "value"
-                        value
-                        options-for-gender]
+    (= field "gender") [gender-filter-input index operator value]
     (= field "birth") [date-filter-input index operator value]
-    :else [text-input
-           (partial on-change-for-filter-form index :value)
-           (keyword (str "value-" index))
-           "value"
-           value]))
+    :else [text-filter-input index operator value]))
 
 (defn patient-filter-form []
-  (let [values (:vals @(rf/subscribe [::subs/form :patient-filter-form]))]
+  (let [fieldsets @(rf/subscribe [::subs/form :patient-filter-form])]
     [:form {:id :patient-filter-form}
-     ;@TODO inside map, we can't know what index is there.
-     (map
-      (fn [{:keys [index field operator value]}]
+     (map-indexed
+      (fn [index {:keys [field operator value]}]
         [:fieldset {:key index}
          [select-picker
-          (partial on-change-for-filter-form index :field)
+          (partial reg-dynamic-control index :field)
           (keyword (str "field-" index))
           "field"
           value
-          options-for-patient-filter]
+          filter-options]
          [conditional-input index field operator value]
          [:button {:type "button"
-                   :on-click #(rf/dispatch [::events/delete-index-from-vec-form
+                   :on-click #(rf/dispatch [::events/delete-dynamic-fieldset
                                             {:form-id :patient-filter-form
                                              :index index}])}
           "x"]])
-      values)
+      fieldsets)
      [:button {:type "button"
-               :on-click #(rf/dispatch [::events/push-vec-form
+               :on-click #(rf/dispatch [::events/add-dynamic-fieldset
                                         {:form-id :patient-filter-form}])}
       "Add Filter"]
-     (when (not-empty values)
+     (when (not-empty fieldsets)
        [:button {:type "button"
-                 :on-click #(rf/dispatch [::events/push-vec-form
-                                          {:form-id :patient-filter-form}])}
+                 :on-click #(rf/dispatch [::events/search-patients
+                                          {:filters fieldsets}])}
         "Search"])]))
 
 (defmulti view :handler)
@@ -232,9 +284,10 @@
   [:div "Patients"
    [:input {:type "text"
             :name "keywords"
-            :on-change #(rf/dispatch [::events/search (-> %
-                                                          .-target
-                                                          .-value)])}]
+            :on-change #(rf/dispatch [::events/search-patients
+                                      {:keywords (-> %
+                                                     .-target
+                                                     .-value)}])}]
    [patient-filter-form]
    [:ul
     [:li
