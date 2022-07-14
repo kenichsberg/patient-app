@@ -19,28 +19,6 @@
  (fn [_ _]
    db/default-db))
 
-;(defmulti on-navigate (fn [view _] view))
-;(defmethod on-navigate :hs-test-app.views/list [_ params]
-;  {:fx [[:dispatch [::fetch-patients
-;                    (get params :keywords)
-;                    (get params :filters)]]]})
-;(defmethod on-navigate :hs-test-app.views/edit [_ params]
-;  {:fx [[:dispatch [::fetch-patient-by-id (:id params)]]]})
-;(defmethod on-navigate :default [_ _] nil)
-
-;(rf/reg-event-fx
-; ::set-current-route
-; (fn [{:keys [db]} [_ {:keys [handler route-params]
-;                       :as route}]]
-;   (println route-params)
-;   (merge {:db (assoc db :route route)}
-;          (on-navigate handler route-params))))
-;
-;(rf/reg-event-fx
-; ::navigate
-; (fn [_ [_ view params]]
-;   {::fx/navigate {:view view
-;                   :params params}}))
 (defn parse-query-string [q-str]
   (let [s (str/replace q-str #"^\?" "")]
     (when (seq s)
@@ -160,7 +138,7 @@
 ;   {::fx/dispatch-debounce [:search [::fetch-patients keywords] 1000]}))
 (rf/reg-event-fx
  ::search-patients
- ;; @TODO first API request, then push state
+ ;; @TODO first wait input, then push state
  (fn [_ [_ {:keys [keywords filters]}]]
    {::fx/dispatch-debounce [:search-patients
                             [::push-state

@@ -4,11 +4,6 @@
             [route-map.core :as route-map]
             [hs-test-app.routes :as routes]))
 
-;(rf/reg-fx
-; ::navigate
-; (fn [{:keys [view params]}]
-;   (routes/navigate view params)))
-
 (defonce popstate-listener
   (atom ""))
 
