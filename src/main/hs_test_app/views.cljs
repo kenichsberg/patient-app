@@ -72,15 +72,6 @@
            [:option {:key (:label o) :value (:value o)} (:label o)])
          options)]])
 
-(comment
-  (def d (fmt/parse formatter "1940-11-10"))
-  (def f (fmt/formatter "yyyy-MM-dd"))
-  (def get-day (fmt/formatter "dd"))
-  (fmt/unparse get-day
-               (fmt/parse f "1940-11-10"))
-  (fmt/unparse get-day
-               (fmt/parse formatter "1999-01-01")))
-
 (defn date-input [on-change control-id label default-value]
   (let [[year month day] (str/split default-value #"-")]
     [:<>
@@ -186,8 +177,7 @@
     (keyword (str "operator-" index))
     "operator"
     operator
-    [{:label "equals" :value "eq"}]
-    true]
+    [{:label "equals" :value "eq"}]]
    [select-picker
     (partial reg-dynamic-control index :value)
     (keyword (str "value-" index))
@@ -219,7 +209,7 @@
     "operator"
     operator
     [{:label "equals" :value "eq"}
-     {:label "contains" :value "cont"}]]
+     {:label "contains" :value "gt"}]]
    [text-input
     (partial reg-dynamic-control index :value)
     (keyword (str "value-" index))
