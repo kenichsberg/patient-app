@@ -243,6 +243,7 @@
 ;           (keyword (str "value-" index))
 ;           "value"
 ;           value]))
+
 (defn conditional-input [index field operator value]
   (cond
     (nil? field) nil
@@ -279,8 +280,14 @@
                                           {:filters fieldsets}])}
         "Search"])]))
 
-(defmulti view :handler)
-(defmethod view ::list [_]
+;(defmulti view :handler)
+;(defmulti view identity)
+(defmulti view (fn [arg]
+                 (println (str "view: " arg))
+                 arg))
+
+;(defmethod view ::list [_]
+(defmethod view :default [_]
   [:div "Patients"
    [:input {:type "text"
             :name "keywords"
@@ -305,8 +312,8 @@
                 address
                 health_insurance_number]}]
            [:li {:key health_insurance_number
-                 :on-click #(rf/dispatch [::events/navigate
-                                          ::edit
+                 :on-click #(rf/dispatch [::events/push-state
+                                          :patients-edit
                                           {:id id}])}
             [:span (str first_name " " last_name)]
             [:span gender]

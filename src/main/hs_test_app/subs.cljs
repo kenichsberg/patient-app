@@ -4,7 +4,9 @@
 (rf/reg-sub
  ::current-route
  (fn [db _]
-   (get db :route {:handler :hs-test-app.views/list})))
+   ;@TODO correct value for :route
+   ;(get db :route :hs-test-app.views/list)))
+   (get db :route)))
 
 (rf/reg-sub
  ::patients
