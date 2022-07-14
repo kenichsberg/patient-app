@@ -116,10 +116,6 @@
  (fn [_ [_ keywords filters]]
    {:http-xhrio (assoc request-defaults
                        :method :get
-                       ;:uri (str config/API_URL
-                       ;          "/patients"
-                       ;          (when-not (empty? keywords)
-                       ;            (str "?keywords=" keywords)))
                        :uri (str config/API_URL
                                  "/patients"
                                  (gen-query-string keywords filters))
@@ -132,10 +128,6 @@
           :patients res
           :patient-in-edit nil)))
 
-;(rf/reg-event-fx
-; ::search
-; (fn [_ [_ keywords]]
-;   {::fx/dispatch-debounce [:search [::fetch-patients keywords] 1000]}))
 (rf/reg-event-fx
  ::search-patients
  ;; @TODO first wait input, then push state
@@ -199,11 +191,6 @@
                        :uri (str config/API_URL "/patients/" patient-id)
                        :format (json-request-format)
                        :on-success [::fetch-patients])}))
-
-;(rf/reg-event-db
-; ::init-form
-; (fn [db [_ {:keys [form-id]}]]
-;   (assoc-in db [:form form-id] {})))
 
 (rf/reg-event-db
  ::update-control
