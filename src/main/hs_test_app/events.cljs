@@ -98,7 +98,7 @@
 (defn gen-query-string [keywords filters]
   (->> (cond-> []
          (seq keywords) (conj (str "keywords=" keywords))
-         (seq filters) (concat (map #(str "filter[]="
+         (seq filters) (concat (map #(str "filters[]="
                                           (% :field) ","
                                           (% :operator) ","
                                           (% :value))
