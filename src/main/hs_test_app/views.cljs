@@ -1,14 +1,14 @@
 (ns hs-test-app.views
   (:require [re-frame.core :as rf]
             [clojure.string :as str]
-            [cljs-time.format :as fmt]
+            ;[cljs-time.format :as fmt]
             [hs-test-app.events :as events]
             [hs-test-app.subs :as subs]))
 
-(def formatter (fmt/formatter "yyyy-MM-dd"))
-(def get-year (fmt/formatter "yyyy"))
-(def get-month (fmt/formatter "MM"))
-(def get-day (fmt/formatter "dd"))
+;(def formatter (fmt/formatter "yyyy-MM-dd"))
+;(def get-year (fmt/formatter "yyyy"))
+;(def get-month (fmt/formatter "MM"))
+;(def get-day (fmt/formatter "dd"))
 
 (def month-options
   [{:label "Jan" :value "01"}
@@ -82,8 +82,6 @@
                (fmt/parse formatter "1999-01-01")))
 
 (defn date-input [on-change control-id label default-value]
-  ;(when-let [date (fmt/parse formatter default-value)]
-  ;(when-let [date (js/Date. default-value)]
   (let [[year month day] (str/split default-value #"-")]
     [:<>
      [:label label]
@@ -228,21 +226,6 @@
     "value"
     value]])
 
-;(defn conditional-input [index field operator value]
-;  (cond
-;    (nil? field) nil
-;    (= field "gender") [select-picker
-;                        (partial reg-dynamic-control index :value)
-;                        (keyword (str "value-" index))
-;                        "value"
-;                        value
-;                        gender-options]
-;    (= field "birth") [date-filter-input index operator value]
-;    :else [text-input
-;           (partial reg-dynamic-control index :value)
-;           (keyword (str "value-" index))
-;           "value"
-;           value]))
 (defn conditional-input [index field operator value]
   (cond
     (nil? field) nil
@@ -279,8 +262,10 @@
                                           {:filters fieldsets}])}
         "Search"])]))
 
-(defmulti view :handler)
-(defmethod view ::list [_]
+(defmulti view identity)
+
+;(defmethod view ::list [_]
+(defmethod view :default [_]
   [:div "Patients"
    [:input {:type "text"
             :name "keywords"
@@ -305,8 +290,8 @@
                 address
                 health_insurance_number]}]
            [:li {:key health_insurance_number
-                 :on-click #(rf/dispatch [::events/navigate
-                                          ::edit
+                 :on-click #(rf/dispatch [::events/push-state
+                                          :patients-edit
                                           {:id id}])}
             [:span (str first_name " " last_name)]
             [:span gender]

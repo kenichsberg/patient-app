@@ -2,9 +2,11 @@
   (:require [re-frame.core :as rf]
             [clojure.string :as str]
             [day8.re-frame.http-fx]
+            [route-map.core :as route-map]
             [ajax.core :refer [json-request-format json-response-format]]
             [hs-test-app.config :as config]
             [hs-test-app.db :as db]
+            [hs-test-app.routes :refer [routes]]
             [hs-test-app.fx :as fx]))
 
 (def request-defaults
@@ -17,35 +19,83 @@
  (fn [_ _]
    db/default-db))
 
-(defmulti on-navigate (fn [view _] view))
-(defmethod on-navigate :hs-test-app.views/list [_ params]
+(defn parse-query-string [q-str]
+  (let [s (str/replace q-str #"^\?" "")]
+    (when (seq s)
+      (->> (str/split s #"&")
+           (reduce (fn [acc s]
+                     (let [[k v] (str/split s #"=")
+                           v (cond
+                               (empty? v) ""
+                               (str/includes? v ",") (->> (str/split v #",")
+                                                          (map js/decodeURIComponent))
+                               :else (js/decodeURIComponent v))]
+                       (if (nil? (re-find #"\[\]$" k))
+                         (assoc acc (keyword k) v)
+                         (let [kw (-> k
+                                      (str/replace #"\[\]$" "")
+                                      (keyword))]
+                           (update acc kw #(conj (vec %1) %2) v)))))
+                   {})))))
+
+(comment
+  (parse-query-string "?a")
+  (parse-query-string ""))
+
+(rf/reg-event-fx
+ ::init-routes
+ (fn [cofx [_ route]]
+   {:db (assoc (:db cofx)
+               :route route)
+    :fx [[:dispatch [::init-popstate-listener []]]
+         [:dispatch [::initial-navigation []]]]}))
+
+(rf/reg-event-fx
+ ::init-popstate-listener
+ (fn []
+   {::fx/init-popstate-listener []}))
+
+(rf/reg-event-fx
+ ::initial-navigation
+ (fn []
+   (let [path (.. js/window -location -pathname)
+         query-str (.. js/window -location -search)
+         matched (route-map/match path routes)
+         route (:match matched)
+         path-params (if (empty? (:params matched)) nil (:params matched))
+         query-params (parse-query-string query-str)]
+     (println route path-params query-params)
+     {:dispatch [::navigated [route path-params query-params]]})))
+
+(rf/reg-event-fx
+ ::push-state
+ (fn [_ [_ route-name path-params query-params]]
+   {::fx/push-state [route-name path-params query-params]}))
+
+(defmulti on-navigated (fn [view-key _] view-key))
+(defmethod on-navigated :hs-test-app.views/list [_ _ query-params]
   {:fx [[:dispatch [::fetch-patients
-                    (get params :keywords)
-                    (get params :filters)]]]})
-(defmethod on-navigate :hs-test-app.views/edit [_ params]
-  {:fx [[:dispatch [::fetch-patient-by-id (:id params)]]]})
-(defmethod on-navigate :default [_ _] nil)
+                    (get query-params :keywords)
+                    (get query-params :filters)]]]})
+(defmethod on-navigated :hs-test-app.views/edit [_ path-params]
+  {:fx [[:dispatch [::fetch-patient-by-id (:id path-params)]]]})
+(defmethod on-navigated :default [_ _] nil)
 
 (rf/reg-event-fx
- ::set-current-route
- (fn [{:keys [db]} [_ {:keys [handler route-params]
-                       :as route}]]
-   (println route-params)
-   (merge {:db (assoc db :route route)}
-          (on-navigate handler route-params))))
-
-(rf/reg-event-fx
- ::navigate
- (fn [_ [_ view params]]
-   {::fx/navigate {:view view
-                   :params params}}))
+ ::navigated
+ (fn [cofx [_ [route path-params query-params]]]
+   (merge {:db (assoc (:db cofx)
+                      :route route
+                      :path-params path-params
+                      :query-params query-params)}
+          (on-navigated route path-params query-params))))
 
 (rf/reg-event-db
  ::set-error
  (fn [db [_ res]]
    (assoc db :error res)))
 
-(defn make-query-str [keywords filters]
+(defn gen-query-string [keywords filters]
   (->> (cond-> []
          (seq keywords) (conj (str "keywords=" keywords))
          (seq filters) (concat (map #(str "filter[]="
@@ -57,8 +107,8 @@
        (#(when (seq %) (str "?" %)))))
 
 (comment
-  (make-query-str "aaa" [{:field "a" :operator "a" :value "a"}
-                         {:field "b" :operator "b" :value "b"}])
+  (gen-query-string "aaa" [{:field "a" :operator "a" :value "a"}
+                           {:field "b" :operator "b" :value "b"}])
   (str/join "&" []))
 
 (rf/reg-event-fx
@@ -72,7 +122,7 @@
                        ;            (str "?keywords=" keywords)))
                        :uri (str config/API_URL
                                  "/patients"
-                                 (make-query-str keywords filters))
+                                 (gen-query-string keywords filters))
                        :on-success [::set-patients])}))
 
 (rf/reg-event-db
@@ -88,12 +138,15 @@
 ;   {::fx/dispatch-debounce [:search [::fetch-patients keywords] 1000]}))
 (rf/reg-event-fx
  ::search-patients
+ ;; @TODO first wait input, then push state
  (fn [_ [_ {:keys [keywords filters]}]]
    {::fx/dispatch-debounce [:search-patients
-                            [::navigate
-                             :hs-test-app.views/list
+                            [::push-state
+                             :patients
+                             nil
                              {:keywords keywords
-                              :filters filters}] 1000]}))
+                              :filters filters}]
+                            1000]}))
 
 (rf/reg-event-fx
  ::fetch-patient-by-id
@@ -120,7 +173,7 @@
                        :uri (str config/API_URL "/patients")
                        :params values
                        :format (json-request-format)
-                       :on-success [::navigate :hs-test-app.views/list])}))
+                       :on-success [::push-state :patients])}))
 
 (rf/reg-event-fx
  ::update-patient
@@ -135,7 +188,7 @@
 (rf/reg-event-fx
  ::on-success-update
  (fn [_ _]
-   {:fx [[:dispatch [::navigate :hs-test-app.views/list]]
+   {:fx [[:dispatch [::push-state :patients]]
          [:dispatch [::close-form {:form-id :patient-reg-form}]]]}))
 
 (rf/reg-event-fx
@@ -158,14 +211,14 @@
    (assoc-in db [:form form-id control-id] value)))
 
 (defn update-date-str [old-str target value]
-  (-> old-str
-      (#(if (empty? %) "--" %))
+  (-> (if (empty? old-str) "--" old-str)
       (str/split #"-" -1)
       (cond->
        (= target :year) (assoc 0 value)
        (= target :month) (assoc 1 value)
        (= target :day) (assoc 2 value))
-      (#(str/join "-" %))))
+      (->>
+       (str/join "-"))))
 
 (rf/reg-event-db
  ::update-date-control
@@ -194,10 +247,6 @@
 (rf/reg-event-db
  ::upsert-dynamic-date-control
  (fn [db [_ {:keys [form-id index control-id target value]}]]
-   ;(cond
-   ;  (= control-id :field) (assoc-in db [:form form-id index] {:field value})
-   ;  (= control-id :operator) (assoc-in db [:form form-id index control-id] value)
-   ;  (= control-id :value)
    (update-in db [:form form-id index control-id] update-date-str target value)));)
 
 (defn drop-index [coll index]
