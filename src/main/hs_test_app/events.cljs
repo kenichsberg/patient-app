@@ -19,29 +19,6 @@
  (fn [_ _]
    db/default-db))
 
-(defn parse-query-string [q-str]
-  (let [s (str/replace q-str #"^\?" "")]
-    (when (seq s)
-      (->> (str/split s #"&")
-           (reduce (fn [acc s]
-                     (let [[k v] (str/split s #"=")
-                           v (cond
-                               (empty? v) ""
-                               (str/includes? v ",") (->> (str/split v #",")
-                                                          (map js/decodeURIComponent))
-                               :else (js/decodeURIComponent v))]
-                       (if (nil? (re-find #"\[\]$" k))
-                         (assoc acc (keyword k) v)
-                         (let [kw (-> k
-                                      (str/replace #"\[\]$" "")
-                                      (keyword))]
-                           (update acc kw #(conj (vec %1) %2) v)))))
-                   {})))))
-
-(comment
-  (parse-query-string "?a")
-  (parse-query-string ""))
-
 (rf/reg-event-fx
  ::init-routes
  (fn [cofx [_ route]]
@@ -59,12 +36,11 @@
  ::initial-navigation
  (fn []
    (let [path (.. js/window -location -pathname)
-         query-str (.. js/window -location -search)
+         q-str (.. js/window -location -search)
          matched (route-map/match path routes)
          route (:match matched)
          path-params (if (empty? (:params matched)) nil (:params matched))
-         query-params (parse-query-string query-str)]
-     (println route path-params query-params)
+         query-params (fx/querystr->map q-str)]
      {:dispatch [::navigated [route path-params query-params]]})))
 
 (rf/reg-event-fx
@@ -95,21 +71,17 @@
  (fn [db [_ res]]
    (assoc db :error res)))
 
-(defn gen-query-string [keywords filters]
+(defn gen-querystr-search [keywords filters]
   (->> (cond-> []
          (seq keywords) (conj (str "keywords=" keywords))
          (seq filters) (concat (map #(str "filters[]="
-                                          (% :field) ","
-                                          (% :operator) ","
-                                          (% :value))
+                                          (str/join "," %))
                                     filters)))
        (str/join "&")
        (#(when (seq %) (str "?" %)))))
 
 (comment
-  (gen-query-string "aaa" [{:field "a" :operator "a" :value "a"}
-                           {:field "b" :operator "b" :value "b"}])
-  (str/join "&" []))
+  (gen-querystr-search "" []))
 
 (rf/reg-event-fx
  ::fetch-patients
@@ -118,7 +90,8 @@
                        :method :get
                        :uri (str config/API_URL
                                  "/patients"
-                                 (gen-query-string keywords filters))
+                                 (fx/map->querystr {:keywords keywords
+                                                    :filters filters}))
                        :on-success [::set-patients])}))
 
 (rf/reg-event-db
@@ -128,17 +101,24 @@
           :patients res
           :patient-in-edit nil)))
 
+;(defn filtermap->vec [filters]
+;  (mapv (fn [{:keys [field operator value]}]
+;          [field operator value]
+;          filters)))
+
 (rf/reg-event-fx
  ::search-patients
- ;; @TODO first wait input, then push state
  (fn [_ [_ {:keys [keywords filters]}]]
-   {::fx/dispatch-debounce [:search-patients
-                            [::push-state
-                             :patients
-                             nil
-                             {:keywords keywords
-                              :filters filters}]
-                            1000]}))
+   (let [filtervecs (mapv (fn [{:keys [field operator value]}]
+                            [field operator value])
+                          filters)]
+     {::fx/dispatch-debounce [:search-patients
+                              [::push-state
+                               :patients
+                               nil
+                               {:keywords keywords
+                                :filters filtervecs}]
+                              1000]})))
 
 (rf/reg-event-fx
  ::fetch-patient-by-id
