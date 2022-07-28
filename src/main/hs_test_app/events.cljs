@@ -9,6 +9,7 @@
             [hs-test-app.routes :refer [routes]]
             [hs-test-app.fx :as fx]
             [hs-test-app.utils :as utils]
+            [hs-test-app.validation :as v]))
 
 (def request-defaults
   {:timeout 6000
@@ -156,49 +157,112 @@
                        :format (json-request-format)
                        :on-success [::fetch-patients])}))
 
-(rf/reg-event-db
- ::update-control
- (fn [db [_ {:keys [form-id control-id value]}]]
-   (assoc-in db [:form form-id control-id] value)))
-
-(defn update-date-str [old-str target value]
+(defn update-date-str [old-str date-unit value]
   (-> (if (empty? old-str) "--" old-str)
       (str/split #"-" -1)
       (cond->
-       (= target :year) (assoc 0 value)
-       (= target :month) (assoc 1 value)
-       (= target :day) (assoc 2 value))
+       (= date-unit :year) (assoc 0 value)
+       (= date-unit :month) (assoc 1 value)
+       (= date-unit :day) (assoc 2 value))
       (->>
        (str/join "-"))))
 
+;; @TODO
 (rf/reg-event-db
- ::update-date-control
- (fn [db [_ {:keys [form-id control-id target value]}]]
-   (update-in db [:form form-id control-id] update-date-str target value)))
+ ::update-field
+ (fn [db [_ {:keys [form-id
+                    field-type
+                    field-id
+                    value
+                    validation-rules
+                    date-unit]}]]
+   (cond-> db
+     (= field-type "date") (update-in [:form form-id field-id]
+                                      update-date-str
+                                      date-unit
+                                      value)
+     (= field-type "text") (assoc-in [:form form-id field-id] value)
+     :always (#(let [form-values (get-in % [:form form-id])
+                     validation-result (v/validate validation-rules form-values)]
+                 (assoc-in % [:form-errors form-id] validation-result))))))
+
+(rf/reg-event-fx
+ ::on-change-field
+ (fn [_ [_ {:keys [form-id
+                   field-type
+                   field-id
+                   value
+                   validation-rules
+                   date-unit]}]]
+   {::fx/dispatch-debounce [(-> (str "update-" (name form-id) "-" (name field-id))
+                                keyword)
+                            [::update-field
+                             {:field-type field-type
+                              :form-id form-id
+                              :field-id field-id
+                              :date-unit date-unit
+                              :value value
+                              :validation-rules validation-rules}]
+                            1000]}))
+
+(rf/reg-event-db
+ ::update-dynamic-field
+ (fn [db [_ {:keys [form-id
+                    first-field
+                    field-type
+                    index
+                    field-id
+                    value
+                    validation-rules
+                    date-unit]}]]
+   (cond-> db
+     (= field-id first-field) (assoc-in [:form form-id index] {first-field value})
+     (and (not= field-id first-field)
+          (= field-type "date")) (update-in [:form form-id index field-id]
+                                            update-date-str
+                                            date-unit
+                                            value)
+     (and (not= field-id first-field)
+          (= field-type "text")) (assoc-in [:form form-id index field-id] value)
+     :always (#(let [form-values (get-in % [:form form-id])
+                     validation-result (v/validate validation-rules form-values)]
+                 (assoc-in % [:form-errors form-id] validation-result))))))
+
+(rf/reg-event-fx
+ ::on-change-dynamic-field
+ (fn [_ [_ {:keys [form-id
+                   index
+                   field-id]
+            :as params}]]
+   {::fx/dispatch-debounce [(-> (str (name form-id) "/" index "/" (name field-id))
+                                keyword)
+                            [::update-dynamic-field
+                             params]
+                            1000]}))
+
+(rf/reg-event-db
+ ::update-errors
+ (fn [db [_ {:keys [form-id validation-rules]}]]
+   (let [form-values (get-in db [:form form-id])
+         validation-result (v/validate validation-rules form-values)]
+     (assoc-in db [:form-errors form-id] validation-result))))
+
+(rf/reg-event-db
+ ::submitting-form
+ (fn [db [_ {:keys [form-id]}]]
+   (assoc-in db [:form-submitting? form-id] true)))
 
 (rf/reg-event-db
  ::close-form
  (fn [db [_ {:keys [form-id]}]]
-   (update db :form dissoc form-id)))
+   (-> db
+       (update :form dissoc form-id)
+       (update :form-errors dissoc form-id))))
 
 (rf/reg-event-db
  ::add-dynamic-fieldset
  (fn [db [_ {:keys [form-id]}]]
-   (if (vector? (get-in db [:form form-id]))
-     (update-in db [:form form-id] conj {:field nil})
-     (assoc-in db [:form form-id] [{:field nil}]))))
-
-(rf/reg-event-db
- ::upsert-dynamic-control
- (fn [db [_ {:keys [form-id index control-id value]}]]
-   (if (= control-id :field)
-     (assoc-in db [:form form-id index] {:field value})
-     (assoc-in db [:form form-id index control-id] value))))
-
-(rf/reg-event-db
- ::upsert-dynamic-date-control
- (fn [db [_ {:keys [form-id index control-id target value]}]]
-   (update-in db [:form form-id index control-id] update-date-str target value)));)
+   (update-in db [:form form-id] #(vec (conj %1 %2)) {:field nil})))
 
 (defn drop-index [coll index]
   (vec (concat (subvec coll 0 index)

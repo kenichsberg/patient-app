@@ -23,9 +23,6 @@
         patients)))
 
 (rf/reg-sub
- ::form-control-value
- (fn [db [_ form-id control-id]]
-   (get-in db [:form form-id control-id] "")))
  ::patient-in-edit
  :-> :patient-in-edit)
 
@@ -33,6 +30,68 @@
  ::form
  (fn [db [_ form-id]]
    (get-in db [:form form-id] [])))
+
+(rf/reg-sub
+ ::form-submitting?
+ (fn [db [_ form-id]]
+   (get-in db [:form-submitting? form-id] false)))
+
+(rf/reg-sub
+ ::form-errors
+ (fn [db [_ form-id]]
+   (get-in db [:form-errors form-id] [])))
+
+(rf/reg-sub
+ ::has-form-errors?
+ (fn [[_ form-id] _]
+   (rf/subscribe [::form-errors form-id]))
+ (fn [errors _]
+   (boolean (seq errors))))
+
+(rf/reg-sub
+ ::form-field-value
+ (fn [db [_ form-id field-id]]
+   (get-in db [:form form-id field-id] "")))
+
+(rf/reg-sub
+ ::form-date-value
+ (fn [[_ form-id field-id] _]
+   (rf/subscribe [::form-field-value form-id field-id]))
+ (fn [v [_ _ field-id]]
+   (let [[year month day] (if (empty? v)
+                            ["" "" ""]
+                            (str/split v #"-"))]
+     {:year year
+      :month month
+      :day day
+      :year-id (-> field-id name (str "-y") keyword)
+      :month-id (-> field-id name (str "-m") keyword)
+      :day-id (-> field-id name (str "-m") keyword)})))
+
+(rf/reg-sub
+ ::form-field-error?
+ (fn [[_ form-id] _]
+   (rf/subscribe [::form-errors form-id]))
+ (fn [errors [_ _ field-id]]
+   (let [field-errors (filterv #(= (:field %) field-id) errors)]
+     (boolean (seq field-errors)))))
+
+(rf/reg-sub
+ ::form-field-error-message
+ (fn [[_ form-id] _]
+   (rf/subscribe [::form-errors form-id]))
+ (fn [errors [_ _ field-id]]
+   (let [field-errors (filterv #(= (:field %) field-id) errors)]
+     (-> field-errors
+         first
+         :errors
+         first
+         :message))))
+
+(rf/reg-sub
+ ::array-form-field-value
+ (fn [db [_ form-id index field-id]]
+   (get-in db [:form form-id index field-id] "")))
 
 (rf/reg-sub
  ::array-form-indexed
@@ -50,3 +109,68 @@
         (merge m {:index index
                   :uuid (random-uuid)} id-map)))
     form)))
+
+(rf/reg-sub
+ ::array-form-date-value
+ (fn [[_ form-id index field-id] _]
+   (rf/subscribe [::array-form-field-value form-id index field-id]))
+ (fn [v [_ _ _ field-id]]
+   (let [[year month day] (if (empty? v)
+                            ["" "" ""]
+                            (str/split v #"-"))]
+     {:year year
+      :month month
+      :day day
+      :year-id (-> field-id name (str "-y") keyword)
+      :month-id (-> field-id name (str "-m") keyword)
+      :day-id (-> field-id name (str "-m") keyword)})))
+
+(rf/reg-sub
+ ::array-form-field-error?
+ (fn [[_ form-id] _]
+   (rf/subscribe [::form-errors form-id]))
+ (fn [array-form-errors [_ _ index field-id]]
+   (let [errors (get array-form-errors index)
+         field-errors (filterv #(= (:field %) field-id) errors)]
+     (boolean (seq field-errors)))))
+
+(rf/reg-sub
+ ::array-form-field-error-message
+ (fn [[_ form-id] _]
+   (rf/subscribe [::form-errors form-id]))
+ (fn [array-form-errors [_ _ index field-id]]
+   (let [errors (get array-form-errors index)
+         field-errors (filterv #(= (:field %) field-id) errors)]
+     (-> field-errors
+         first
+         :errors
+         first
+         :message))))
+
+(comment
+  (def errors [{:field :first_name
+                :errors [{:error-name "required", :message "This field is required."}]}])
+
+  ((fn [errors [_ _ field-id]]
+     (let [field-errors (filterv #(= (:field %) field-id) errors)]
+       (prn field-errors)
+       (-> field-errors
+           first
+           :errors
+           first
+           :message))) errors [1 2 :first_name])
+  (def array-errors
+    '([{:field :operator,
+        :errors [{:error-name "required", :message "This field is required."}]}
+       {:field :value,
+        :errors [{:error-name "required", :message "This field is required."}]}]
+      [{:field :operator,
+        :errors [{:error-name "required", :message "This field is required."}]}
+       {:field :value,
+        :errors [{:error-name "required", :message "This field is required."}]}]))
+  ((fn [array-form-errors [_ _ index field-id]]
+     (let [errors (get array-form-errors index)
+           field-errors (filterv #(= (:field %) field-id) errors)]
+       (prn errors)
+       (prn field-errors)
+       (boolean (seq field-errors)))) array-errors [0 1 0 :operator]))
