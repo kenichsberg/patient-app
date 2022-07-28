@@ -7,7 +7,8 @@
             [hs-test-app.config :as config]
             [hs-test-app.db :as db]
             [hs-test-app.routes :refer [routes]]
-            [hs-test-app.fx :as fx]))
+            [hs-test-app.fx :as fx]
+            [hs-test-app.utils :as utils]
 
 (def request-defaults
   {:timeout 6000
@@ -40,7 +41,7 @@
          matched (route-map/match path routes)
          route (:match matched)
          path-params (if (empty? (:params matched)) nil (:params matched))
-         query-params (fx/querystr->map q-str)]
+         query-params (utils/querystr->map q-str)]
      {:dispatch [::navigated [route path-params query-params]]})))
 
 (rf/reg-event-fx
@@ -71,18 +72,6 @@
  (fn [db [_ res]]
    (assoc db :error res)))
 
-(defn gen-querystr-search [keywords filters]
-  (->> (cond-> []
-         (seq keywords) (conj (str "keywords=" keywords))
-         (seq filters) (concat (map #(str "filters[]="
-                                          (str/join "," %))
-                                    filters)))
-       (str/join "&")
-       (#(when (seq %) (str "?" %)))))
-
-(comment
-  (gen-querystr-search "" []))
-
 (rf/reg-event-fx
  ::fetch-patients
  (fn [_ [_ keywords filters]]
@@ -90,8 +79,8 @@
                        :method :get
                        :uri (str config/API_URL
                                  "/patients"
-                                 (fx/map->querystr {:keywords keywords
-                                                    :filters filters}))
+                                 (utils/map->querystr {:keywords keywords
+                                                       :filters filters}))
                        :on-success [::set-patients])}))
 
 (rf/reg-event-db
@@ -100,11 +89,6 @@
    (assoc db
           :patients res
           :patient-in-edit nil)))
-
-;(defn filtermap->vec [filters]
-;  (mapv (fn [{:keys [field operator value]}]
-;          [field operator value]
-;          filters)))
 
 (rf/reg-event-fx
  ::search-patients
