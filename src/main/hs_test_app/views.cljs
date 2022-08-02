@@ -42,17 +42,36 @@
 ;; A map for validation
 ;;
 ;; -------------------------------------------------
-(def validation-rules-map
-  {:patient-reg-form {:first_name v/required
-                      :last_name v/required
-                      :gender v/required
-                      :birth v/valid-date-string
-                      :address v/required
-                      :health_insurance_number v/health-insurance-number}
-   :patient-filter-form {:field v/required
-                         :operator v/required
-                         :value v/required}})
+(defn valid-filter [m]
+  (let [get-error (fn [{:keys [field operator value]}]
+                    (cond
+                      (empty? field) {:field :field
+                                      :error-type :required}
+                      (empty? operator) {:field :operator
+                                         :error-type :required}
+                      (empty? value) {:field :value
+                                      :error-type :required}
+                      (and (= field "birth")
+                           (false? (:valid?
+                                    (v/valid-date-string nil value)))) {:field :value
+                                                                        :error-type :invalid-date}
+                      :else nil))
+        error (get-error m)
+        message-map {:required (str (-> error :field name) " is required.")
+                     :invalid-date "Invalid date."}]
+    {:valid? (nil? error)
+     :field (:field error)
+     :message (get message-map (:error-type error))}))
 
+(def validator-map
+  {:patient-reg-form {:first_name [[v/required "first name"]]
+                      :last_name [[v/required "last name"]]
+                      :gender [[v/required "gender"]]
+                      :birth [[v/required "birth"] [v/valid-date-string]]
+                      :address [[v/required "address"]]
+                      :health_insurance_number [[v/required "health insurance number"]
+                                                [v/health-insurance-number]]}
+   :patient-filter-form valid-filter})
 ;;
 ;;
 ;; -------------------------------------------------
@@ -218,7 +237,7 @@
 ;;
 ;; -------------------------------------------------
 (defn patient-reg-form [handle-submit]
-  (let [validation-rules (:patient-reg-form validation-rules-map)
+  (let [validation-rules (:patient-reg-form validator-map)
         handle-change (partial change-field :patient-reg-form validation-rules)
         handle-blur (partial blur-field :patient-reg-form validation-rules)
         has-errors? @(rf/subscribe [::subs/has-form-errors? :patient-reg-form])
@@ -416,7 +435,7 @@
 
 (defn patient-filter-form []
   (let [fieldsets @(rf/subscribe [::subs/array-form-indexed :patient-filter-form])
-        validation-rules (:patient-filter-form validation-rules-map)
+        validation-rules (:patient-filter-form validator-map)
         handle-change (partial change-dynamic-field :patient-filter-form :field validation-rules)
         handle-blur (partial blur-field :patient-filter-form validation-rules)
         has-errors? @(rf/subscribe [::subs/has-form-errors? :patient-filter-form])

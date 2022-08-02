@@ -75,6 +75,7 @@
  (fn [errors [_ _ field-id]]
    (let [field-errors (filterv #(= (:field %) field-id) errors)]
      (boolean (seq field-errors)))))
+     (some? (seq field-errors)))))
 
 (rf/reg-sub
  ::form-field-error-message
@@ -83,8 +84,6 @@
  (fn [errors [_ _ field-id]]
    (let [field-errors (filterv #(= (:field %) field-id) errors)]
      (-> field-errors
-         first
-         :errors
          first
          :message))))
 
@@ -132,7 +131,7 @@
  (fn [array-form-errors [_ _ index field-id]]
    (let [errors (get array-form-errors index)
          field-errors (filterv #(= (:field %) field-id) errors)]
-     (boolean (seq field-errors)))))
+     (some? (seq field-errors)))))
 
 (rf/reg-sub
  ::array-form-field-error-message
@@ -143,34 +142,4 @@
          field-errors (filterv #(= (:field %) field-id) errors)]
      (-> field-errors
          first
-         :errors
-         first
          :message))))
-
-(comment
-  (def errors [{:field :first_name
-                :errors [{:error-name "required", :message "This field is required."}]}])
-
-  ((fn [errors [_ _ field-id]]
-     (let [field-errors (filterv #(= (:field %) field-id) errors)]
-       (prn field-errors)
-       (-> field-errors
-           first
-           :errors
-           first
-           :message))) errors [1 2 :first_name])
-  (def array-errors
-    '([{:field :operator,
-        :errors [{:error-name "required", :message "This field is required."}]}
-       {:field :value,
-        :errors [{:error-name "required", :message "This field is required."}]}]
-      [{:field :operator,
-        :errors [{:error-name "required", :message "This field is required."}]}
-       {:field :value,
-        :errors [{:error-name "required", :message "This field is required."}]}]))
-  ((fn [array-form-errors [_ _ index field-id]]
-     (let [errors (get array-form-errors index)
-           field-errors (filterv #(= (:field %) field-id) errors)]
-       (prn errors)
-       (prn field-errors)
-       (boolean (seq field-errors)))) array-errors [0 1 0 :operator]))
