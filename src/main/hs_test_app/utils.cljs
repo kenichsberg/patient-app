@@ -28,23 +28,24 @@
 (defn map->querystr [q-params]
   (->> q-params
        (reduce (fn [acc [k v]]
-                 (if (empty? v)
-                   acc
-                   (let [k (if (not (vector? v))
-                             (name k)
-                             (-> (name k)
-                                 (str "[]")
-                                 js/encodeURIComponent))]
-                     (if (not (vector? v))
-                       (conj acc (str k "=" (js/encodeURIComponent v)))
-                       (let  [vs (map #(if (not (vector? %))
-                                         (str k "=" (js/encodeURIComponent %))
-                                         (str k "=" (->> %
-                                                         (map js/encodeURIComponent)
-                                                         (str/join ",")
-                                                         js/encodeURIComponent)))
-                                      v)]
-                         (concat acc vs))))))
+                 (let [v (str v)]
+                   (if (empty? v)
+                     acc
+                     (let [k (if (not (vector? v))
+                               (name k)
+                               (-> (name k)
+                                   (str "[]")
+                                   js/encodeURIComponent))]
+                       (if (not (vector? v))
+                         (conj acc (str k "=" (js/encodeURIComponent v)))
+                         (let  [vs (map #(if (not (vector? %))
+                                           (str k "=" (js/encodeURIComponent %))
+                                           (str k "=" (->> %
+                                                           (map js/encodeURIComponent)
+                                                           (str/join ",")
+                                                           js/encodeURIComponent)))
+                                        v)]
+                           (concat acc vs)))))))
                [])
        (str/join "&")
        (#(when (seq %) (str "?" %)))))

@@ -39,20 +39,24 @@
  (fn []
    (let [path (.. js/window -location -pathname)
          q-str (.. js/window -location -search)
-         matched (route-map/match path routes)
-         route (:match matched)
-         path-params (if (empty? (:params matched)) nil (:params matched))
+         ;matched (route-map/match path routes)
+         ;route (:match matched)
+         ;path-params (if (empty? (:params matched)) nil (:params matched))
          query-params (utils/querystr->map q-str)]
-     (prn "route: " route)
-     ;{:dispatch [::navigated [route path-params query-params]]})))
-     {:dispatch [::push-state :patients]})))
+     ;{:dispatch [::push-state :patients]})))
+     {:dispatch [::trigger-navigation path query-params ""]})))
 
+;(rf/reg-event-fx
+; ::push-state
+; (fn [_ [_ route-name path-params query-params]]
+;   {::fx/push-state [route-name path-params query-params]}))
 (rf/reg-event-fx
- ::push-state
- (fn [_ [_ route-name path-params query-params]]
-   {::fx/push-state [route-name path-params query-params]}))
+ ::trigger-navigation
+ (fn [cofx [_ base-path query-params]]
+   (let [old-url (get-in cofx [:db :url])]
+     {::fx/trigger-navigation [base-path query-params old-url]})))
 
-(defmulti on-navigated (fn [view-key _] view-key))
+(defmulti on-navigated (fn [resource _] resource))
 (defmethod on-navigated :hs-test-app.views/list [_ _ query-params]
   {:fx [[:dispatch [::fetch-patients
                     (get query-params :keywords)
@@ -63,12 +67,13 @@
 
 (rf/reg-event-fx
  ::navigated
- (fn [cofx [_ [route path-params query-params]]]
+ (fn [cofx [_ [resource path-params query-params url]]]
    (merge {:db (assoc (:db cofx)
-                      :route route
+                      :route resource
                       :path-params path-params
-                      :query-params query-params)}
-          (on-navigated route path-params query-params))))
+                      :query-params query-params
+                      :url url)}
+          (on-navigated resource path-params query-params))))
 
 (rf/reg-event-db
  ::set-error
