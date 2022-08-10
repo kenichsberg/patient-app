@@ -192,7 +192,9 @@
 (defn required [field value label]
   {:valid? (-> value str seq boolean)
    :field  field
-   :message (str label " is required.")});)
+   :message (if (-> label str empty?)
+              "Required."
+              (str label " is required."))});)
 
 ;(defn boolean-string [field value]
 ;  {:valid? (some? (some #{(str/lower-case value)} ["true" "false"]))
@@ -222,27 +224,27 @@
    :field field
    :message "Incorrect number of digits."})
 
-(defn valid-filter [m]
-  (let [get-error (fn [{:keys [field operator value]}]
-                    (cond
-                      (empty? field) {:field "field"
-                                      :error-type :required}
-                      (empty? operator) {:field "operator"
-                                         :error-type :required}
-                      (empty? value) {:field "value"
-                                      :error-type :required}
-                      (and (= field "birth")
-                           (false? (:valid?
-                                    (valid-date-string nil value)))) {:field "value"
-                                                                      :error-type :invalid-date}
-                      :else nil))
-        error (get-error m)
-        message-map {:required (str (:field error) " is required.")
-                     :invalid-date "Invalid date."}]
-    (prn error)
-    {:valid? (nil? error)
-     :field (:field error)
-     :message (get message-map (:error-type error))}))
+;(defn valid-filter [m]
+;  (let [get-error (fn [{:keys [field operator value]}]
+;                    (cond
+;                      (empty? field) {:field "field"
+;                                      :error-type :required}
+;                      (empty? operator) {:field "operator"
+;                                         :error-type :required}
+;                      (empty? value) {:field "value"
+;                                      :error-type :required}
+;                      (and (= field "birth")
+;                           (false? (:valid?
+;                                    (valid-date-string nil value)))) {:field "value"
+;                                                                      :error-type :invalid-date}
+;                      :else nil))
+;        error (get-error m)
+;        message-map {:required (str (:field error) " is required.")
+;                     :invalid-date "Invalid date."}]
+;    (prn error)
+;    {:valid? (nil? error)
+;     :field (:field error)
+;     :message (get message-map (:error-type error))}))
 
 (comment
   (validate-per-field [[required :name ""]])
@@ -272,9 +274,9 @@
                   :operator "gt"
                   :value ""}])
   (def k-to-vs'' [{:field "last_name"}])
-  (valid-filter {:field "last_name"
-                 :operator "gt"
-                 :value ""})
-  (validate  valid-filter k-to-vs'')
+  ;(valid-filter {:field "last_name"
+  ;               :operator "gt"
+  ;               :value ""})
+  ;(validate  valid-filter k-to-vs'')
   (apply required '(:first_name "" "first name"))
   (required :first_name "" "first name"))

@@ -207,7 +207,7 @@
 (rf/reg-event-db
  ::update-dynamic-field
  (fn [db [_ {:keys [form-id
-                    first-field
+                    ;first-field
                     field-type
                     index
                     field-id
@@ -215,13 +215,17 @@
                     validation-rules
                     date-unit]}]]
    (cond-> db
-     (= field-id first-field) (assoc-in [:form form-id index] {first-field value})
-     (and (not= field-id first-field)
+     ;(= field-id first-field) (assoc-in [:form form-id index] {first-field value})
+     (= field-id :field) (assoc-in [:form form-id index] {:field value
+                                                          :operator "eq"})
+     ;(and (not= field-id first-field)
+     (and (not= field-id :field)
           (= field-type "date")) (update-in [:form form-id index field-id]
                                             update-date-str
                                             date-unit
                                             value)
-     (and (not= field-id first-field)
+     ;(and (not= field-id first-field)
+     (and (not= field-id :field)
           (= field-type "text")) (assoc-in [:form form-id index field-id] value)
      :always (#(let [form-values (get-in % [:form form-id])
                      validation-result (v/validate validation-rules form-values)]

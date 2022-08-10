@@ -12,14 +12,20 @@
 
 (rf/reg-sub
  ::patients-formatted
- ;:<- ::patients
  (fn [_ _]
    (rf/subscribe [::patients]))
  (fn [patients _]
    (map (fn [{:keys [first_name last_name] :as patient}]
           (-> patient
               (dissoc :first_name :last_name)
-              (assoc :name (str first_name " " last_name))))
+              (assoc :name (str first_name " " last_name))
+              (update :gender #(if (true? %) "Male" "Female"))
+              (update :birth #(-> (js/Intl.DateTimeFormat.
+                                   "en-US"
+                                   #js {:year "numeric"
+                                        :month "short"
+                                        :day "2-digit"})
+                                  (.format (js/Date. %))))))
         patients)))
 
 (rf/reg-sub
@@ -74,7 +80,6 @@
    (rf/subscribe [::form-errors form-id]))
  (fn [errors [_ _ field-id]]
    (let [field-errors (filterv #(= (:field %) field-id) errors)]
-     (boolean (seq field-errors)))))
      (some? (seq field-errors)))))
 
 (rf/reg-sub
@@ -120,9 +125,9 @@
      {:year year
       :month month
       :day day
-      :year-id (-> field-id name (str "-y") keyword)
-      :month-id (-> field-id name (str "-m") keyword)
-      :day-id (-> field-id name (str "-m") keyword)})))
+      :year-field-name (-> field-id name (str "-y") keyword)
+      :month-field-name (-> field-id name (str "-m") keyword)
+      :day-field-name (-> field-id name (str "-m") keyword)})))
 
 (rf/reg-sub
  ::array-form-field-error?
