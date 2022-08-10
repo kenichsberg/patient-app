@@ -575,6 +575,9 @@
 ;; Form components
 ;;
 ;; -------------------------------------------------
+;;
+;; Register Form
+;;
 (defn patient-reg-form [handle-submit]
   (let [validation-rules (:patient-reg-form validator-map)
         handle-change (partial change-field :patient-reg-form validation-rules)
@@ -806,6 +809,27 @@
                                            index
                                            :value])}])))
 
+;;
+;;
+;; Common template for Create / Edit Page
+;;
+(defn patient-reg-page [{:keys [title handle-submit]}]
+  [:article
+   [:h2 {:class (c [:text :gray-600] :font-extrabold :text-4xl)}
+    title]
+   [:div {:class (c [:mt 4] [:mb 8])}
+    [secondary-button {:class-attr (c [:w 70]
+                                      :text-left)
+                       :button-type "button"
+                       :on-click #(rf/dispatch [::events/trigger-navigation
+                                                "/patients"])}
+     "< Back to Patient List"]]
+   [patient-reg-form  handle-submit]])
+
+;;
+;;
+;; Filter Array Form
+;;
 (defn patient-filter-form []
   (let [fieldsets @(rf/subscribe [::subs/array-form-indexed :patient-filter-form])
         validation-rules (:patient-filter-form validator-map)
@@ -909,8 +933,8 @@
 
     [outline-button {:class-attr (c [:w 50])
                      :button-type "button"
-                     :on-click #(rf/dispatch [::events/push-state
-                                              :patients-create])}
+                     :on-click #(rf/dispatch [::events/trigger-navigation
+                                              "/patients/create"])}
      "Create New Patient"]]
    [:div {:class (c [:w 180] [:h 24]
                     :flex :flex-row :justify-between
@@ -971,9 +995,8 @@
                            [:my 2] [:px 5] [:py 2]
                            :cursor-pointer
                            :transition [:duration 200])
-                 :on-click #(rf/dispatch [::events/push-state
-                                          :patients-edit
-                                          {:id id}])}
+                 :on-click #(rf/dispatch [::events/trigger-navigation
+                                          (str "/patients/" id "/edit")])}
             [:span {:class (c [:w 50]
                               :text-lg)}
              name]
@@ -993,27 +1016,41 @@
 ;)
 
 (defmethod view ::edit []
-  [:article
-   [:h2 {:class (c [:text :gray-600] :font-extrabold :text-4xl)}
-    "Edit Patient Data"]
-   [:div {:class (c [:mt 4] [:mb 8])}
-    [secondary-button {:class-attr (c [:w 70]
-                                      :text-left)
-                       :button-type "button"
-                       :on-click #(rf/dispatch [::events/push-state
-                                                :patients])}
-     "< Back to Patient List"]]
-   (let [{:keys [id]} @(rf/subscribe [::subs/patient-in-edit])
-         data @(rf/subscribe [::subs/form :patient-reg-form])]
-     [patient-reg-form  (fn [event]
-                          (.preventDefault event)
-                          (rf/dispatch [::events/update-patient
-                                        id
-                                        {:values data}]))])])
+  ;[:article
+  ; [:h2 {:class (c [:text :gray-600] :font-extrabold :text-4xl)}
+  ;  "Edit Patient Data"]
+  ; [:div {:class (c [:mt 4] [:mb 8])}
+  ;  [secondary-button {:class-attr (c [:w 70]
+  ;                                    :text-left)
+  ;                     :button-type "button"
+  ;                     :on-click #(rf/dispatch [::events/trigger-navigation
+  ;                                              "/patients"])}
+  ;   "< Back to Patient List"]]
+  ; (let [{:keys [id]} @(rf/subscribe [::subs/patient-in-edit])
+  ;       data @(rf/subscribe [::subs/form :patient-reg-form])]
+  ;   [patient-reg-form  (fn [event]
+  ;                        (.preventDefault event)
+  ;                        (rf/dispatch [::events/update-patient
+  ;                                      id
+  ;                                      {:values data}]))])])
+  [patient-reg-page {:title "Edit Patient Data"
+                     :handle-submit (fn [event]
+                                      (let [id @(rf/subscribe [::subs/patient-in-edit])
+                                            data @(rf/subscribe [::subs/form
+                                                                 :patient-reg-form])]
+                                        (.preventDefault event)
+                                        (rf/dispatch [::events/create-patient
+                                                      id
+                                                      {:values data}])))}])
 
 (defmethod view ::create []
-  [:div "Create New Patient"
-   [patient-reg-form {:on-submit #(rf/dispatch [::events/create-patient %])}]])
+  [patient-reg-page {:title "Create Patient Data"
+                     :handle-submit (fn [event]
+                                      (let [data @(rf/subscribe [::subs/form
+                                                                 :patient-reg-form])]
+                                        (.preventDefault event)
+                                        (rf/dispatch [::events/create-patient
+                                                      {:values data}])))}])
 
 (defn main-panel []
   [:main {:class (c :h-min-screen
