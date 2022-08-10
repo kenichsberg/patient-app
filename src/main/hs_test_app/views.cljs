@@ -374,7 +374,6 @@
                                                              "label: " label))))]
     [input-frame {:label label
                   :frame-style :outline
-                  ;:class-attrs (get-in class-attrs [:date :input-frame])
                   :class-attrs {:input-frame {:fieldset {:class (c [:w 100])
                                                          :disable-default? false}}}
                   :error? error?
@@ -554,7 +553,6 @@
     event]
    (rf/dispatch
     [::events/on-change-dynamic-field {:form-id form-id
-                                       ;:first-field first-field
                                        :field-type field-type
                                        :index index
                                        :field-id field-id
@@ -1016,23 +1014,6 @@
 ;)
 
 (defmethod view ::edit []
-  ;[:article
-  ; [:h2 {:class (c [:text :gray-600] :font-extrabold :text-4xl)}
-  ;  "Edit Patient Data"]
-  ; [:div {:class (c [:mt 4] [:mb 8])}
-  ;  [secondary-button {:class-attr (c [:w 70]
-  ;                                    :text-left)
-  ;                     :button-type "button"
-  ;                     :on-click #(rf/dispatch [::events/trigger-navigation
-  ;                                              "/patients"])}
-  ;   "< Back to Patient List"]]
-  ; (let [{:keys [id]} @(rf/subscribe [::subs/patient-in-edit])
-  ;       data @(rf/subscribe [::subs/form :patient-reg-form])]
-  ;   [patient-reg-form  (fn [event]
-  ;                        (.preventDefault event)
-  ;                        (rf/dispatch [::events/update-patient
-  ;                                      id
-  ;                                      {:values data}]))])])
   [patient-reg-page {:title "Edit Patient Data"
                      :handle-submit (fn [event]
                                       (let [id @(rf/subscribe [::subs/patient-in-edit])
