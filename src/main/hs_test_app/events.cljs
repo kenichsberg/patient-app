@@ -26,8 +26,8 @@
  (fn [cofx [_ route]]
    {:db (assoc (:db cofx)
                :route route)
-    :fx [[:dispatch [::init-popstate-listener []]]
-         [:dispatch [::initial-navigation []]]]}))
+    :fx [[:dispatch [::init-popstate-listener]]
+         [:dispatch [::initial-navigation]]]}))
 
 (rf/reg-event-fx
  ::init-popstate-listener
@@ -43,7 +43,9 @@
          route (:match matched)
          path-params (if (empty? (:params matched)) nil (:params matched))
          query-params (utils/querystr->map q-str)]
-     {:dispatch [::navigated [route path-params query-params]]})))
+     (prn "route: " route)
+     ;{:dispatch [::navigated [route path-params query-params]]})))
+     {:dispatch [::push-state :patients]})))
 
 (rf/reg-event-fx
  ::push-state
