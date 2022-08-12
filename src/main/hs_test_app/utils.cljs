@@ -28,7 +28,7 @@
 (defn map->querystr [q-params]
   (->> q-params
        (reduce (fn [acc [k v]]
-                 (let [v (str v)]
+                 (let [v (if (coll? v) v (str v))]
                    (if (empty? v)
                      acc
                      (let [k (if (not (vector? v))

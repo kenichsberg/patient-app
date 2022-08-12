@@ -25,6 +25,7 @@
 (comment
   (:match (route-map/match "patients/5/edit" routes/routes))
   (:match (route-map/match "patients/create" routes/routes))
+  (:match (route-map/match "patients?keywords=a" routes/routes))
   (utils/map->querystr {:keywords "a" :filters [["gender" "eq" "true"] ["address" "gt" "N.Y."]]}))
 
 (defn push-state! [resource path-params query-params url]
@@ -47,7 +48,7 @@
          url (str base-path q-str)]
      ;; Proceed only when the new URL is different from the old one.
      (when-not (= url old-url)
-       (let [matched (route-map/match url routes/routes)
+       (let [matched (route-map/match base-path routes/routes)
              resource (:match matched)
              path-params (:params matched)]
          (push-state! resource path-params query-params url))))))

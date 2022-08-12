@@ -43,13 +43,8 @@
          ;route (:match matched)
          ;path-params (if (empty? (:params matched)) nil (:params matched))
          query-params (utils/querystr->map q-str)]
-     ;{:dispatch [::push-state :patients]})))
      {:dispatch [::trigger-navigation path query-params ""]})))
 
-;(rf/reg-event-fx
-; ::push-state
-; (fn [_ [_ route-name path-params query-params]]
-;   {::fx/push-state [route-name path-params query-params]}))
 (rf/reg-event-fx
  ::trigger-navigation
  (fn [cofx [_ base-path query-params]]
@@ -105,9 +100,8 @@
                             [field operator value])
                           filters)]
      {::fx/dispatch-debounce [:search-patients
-                              [::push-state
-                               :patients
-                               nil
+                              [::trigger-navigation
+                               "/patients"
                                {:keywords keywords
                                 :filters filtervecs}]
                               1000]})))
@@ -137,7 +131,7 @@
                        :uri (str config/API_URL "/patients")
                        :params values
                        :format (json-request-format)
-                       :on-success [::push-state :patients])}))
+                       :on-success [::trigger-navigation "/patients"])}))
 
 (rf/reg-event-fx
  ::update-patient
@@ -152,7 +146,7 @@
 (rf/reg-event-fx
  ::on-success-update
  (fn [_ _]
-   {:fx [[:dispatch [::push-state :patients]]
+   {:fx [[:dispatch [::trigger-navigation "/patients"]]
          [:dispatch [::close-form {:form-id :patient-reg-form}]]]}))
 
 (rf/reg-event-fx
@@ -214,7 +208,6 @@
 (rf/reg-event-db
  ::update-dynamic-field
  (fn [db [_ {:keys [form-id
-                    ;first-field
                     field-type
                     index
                     field-id
@@ -222,16 +215,13 @@
                     validation-rules
                     date-unit]}]]
    (cond-> db
-     ;(= field-id first-field) (assoc-in [:form form-id index] {first-field value})
      (= field-id :field) (assoc-in [:form form-id index] {:field value
                                                           :operator "eq"})
-     ;(and (not= field-id first-field)
      (and (not= field-id :field)
           (= field-type "date")) (update-in [:form form-id index field-id]
                                             update-date-str
                                             date-unit
                                             value)
-     ;(and (not= field-id first-field)
      (and (not= field-id :field)
           (= field-type "text")) (assoc-in [:form form-id index field-id] value)
      :always (#(let [form-values (get-in % [:form form-id])

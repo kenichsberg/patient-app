@@ -7,6 +7,8 @@
                [:id] {"edit" :hs-test-app.views/edit}}})
 
 (defn on-popstate [js-event path-params query-params url]
+  (. js/console log js-event)
+  (. js/console log js-event.state)
   (let [resource (keyword js-event.state.fqn)]
     (rf/dispatch [:hs-test-app.events/navigated
                   [resource path-params query-params url]])))
