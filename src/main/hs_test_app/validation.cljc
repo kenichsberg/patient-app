@@ -163,17 +163,18 @@
 
 (defn validate-maps-by-fn [validator k-to-vs & args]
   (->> k-to-vs
-       (reduce (fn [acc m]
+       (map-indexed vector)
+       ;(reduce (fn [acc m]
+       (reduce (fn [acc [i m]]
                  (if-let [error-map (apply validate-map-by-fn validator m args)]
-                   (conj acc [error-map])
+                   ;(conj acc [error-map])
+                   (let [error-map* (merge error-map {:index i})]
+                     (conj acc error-map*))
                    acc))
                [])
        (#(when (seq %) %))))
 
 (defn validate [k-to-rules k-to-vs & args]
-  ;(prn "1st: " k-to-rules)
-  ;(prn "2nd: " k-to-vs)
-  ;(prn "rest: " args)
   (cond
     (and (not (map? k-to-rules))
          (not (fn? k-to-rules))) (throw #?(:clj  (Exception. "1st argument should be a map or validator function.")
@@ -227,21 +228,21 @@
 ;(defn valid-filter [m]
 ;  (let [get-error (fn [{:keys [field operator value]}]
 ;                    (cond
-;                      (empty? field) {:field "field"
+;                      (empty? field) {:field :field
 ;                                      :error-type :required}
-;                      (empty? operator) {:field "operator"
+;                      (empty? operator) {:field :operator
 ;                                         :error-type :required}
-;                      (empty? value) {:field "value"
+;                      (empty? value) {:field :value
 ;                                      :error-type :required}
 ;                      (and (= field "birth")
 ;                           (false? (:valid?
-;                                    (valid-date-string nil value)))) {:field "value"
+;                                    (valid-date-string nil value)))) {:field :value
 ;                                                                      :error-type :invalid-date}
 ;                      :else nil))
 ;        error (get-error m)
-;        message-map {:required (str (:field error) " is required.")
+;        message-map {;:required (str (-> error :field name) " is required.")
+;                     :required "Required."
 ;                     :invalid-date "Invalid date."}]
-;    (prn error)
 ;    {:valid? (nil? error)
 ;     :field (:field error)
 ;     :message (get message-map (:error-type error))}))
@@ -264,16 +265,16 @@
                    :health_insurance_number [[required "health insurance number"]
                                              [health-insurance-number]]})
   (validate k-to-rules k-to-vs)
-  (def k-to-vs' [{:field "gender"
-                  :operator "eq"
-                  :value "true"}
-                 {:field "birth"
-                  :operator "eq"
-                  :value "220-01-01"}
-                 {:field "last_name"
-                  :operator "gt"
-                  :value ""}])
-  (def k-to-vs'' [{:field "last_name"}])
+  ;(def k-to-vs' [{:field "gender"
+  ;                :operator "eq"
+  ;                :value "true"}
+  ;               {:field "birth"
+  ;                :operator "eq"
+  ;                :value "220-01-01"}
+  ;               {:field "last_name"
+  ;                :operator "gt"
+  ;                :value ""}])
+  ;(def k-to-vs'' [{:field "last_name"}])
   ;(valid-filter {:field "last_name"
   ;               :operator "gt"
   ;               :value ""})

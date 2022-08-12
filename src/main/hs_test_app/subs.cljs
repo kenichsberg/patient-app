@@ -134,17 +134,19 @@
  (fn [[_ form-id] _]
    (rf/subscribe [::form-errors form-id]))
  (fn [array-form-errors [_ _ index field-id]]
-   (let [errors (get array-form-errors index)
-         field-errors (filterv #(= (:field %) field-id) errors)]
-     (some? (seq field-errors)))))
+   (let [errors (->> array-form-errors
+                     (filterv #(= (:index %) index))
+                     (filterv #(= (:field %) field-id)))]
+     (some? (seq errors)))))
 
 (rf/reg-sub
  ::array-form-field-error-message
  (fn [[_ form-id] _]
    (rf/subscribe [::form-errors form-id]))
  (fn [array-form-errors [_ _ index field-id]]
-   (let [errors (get array-form-errors index)
-         field-errors (filterv #(= (:field %) field-id) errors)]
-     (-> field-errors
+   (let [errors (->> array-form-errors
+                     (filterv #(= (:index %) index))
+                     (filterv #(= (:field %) field-id)))]
+     (-> errors
          first
          :message))))

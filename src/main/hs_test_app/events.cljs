@@ -2,11 +2,11 @@
   (:require [re-frame.core :as rf]
             [clojure.string :as str]
             [day8.re-frame.http-fx]
-            [route-map.core :as route-map]
+            ;[route-map.core :as route-map]
             [ajax.core :refer [json-request-format json-response-format]]
             [hs-test-app.config :as config]
             [hs-test-app.db :as db]
-            [hs-test-app.routes :refer [routes]]
+            ;[hs-test-app.routes :refer [routes]]
             [hs-test-app.fx :as fx]
             [hs-test-app.utils :as utils]
             [hs-test-app.validation :as v]))
@@ -105,6 +105,7 @@
                                {:keywords keywords
                                 :filters filtervecs}]
                               1000]})))
+
 
 (rf/reg-event-fx
  ::fetch-patient-by-id
@@ -264,6 +265,13 @@
  (fn [db [_ {:keys [form-id]}]]
    (update-in db [:form form-id] #(vec (conj %1 %2)) {:field nil})))
 
+(rf/reg-event-fx
+ ::add-filter
+ (fn [_ [_ {:keys [form-id validation-rules]}]]
+   {:fx [[:dispatch [::add-dynamic-fieldset {:form-id form-id}]]
+         [:dispatch [::update-errors {:form-id form-id
+                                      :validation-rules validation-rules}]]]}))
+
 (defn drop-index [coll index]
   (vec (concat (subvec coll 0 index)
                (subvec coll (inc index)))))
@@ -271,4 +279,7 @@
 (rf/reg-event-db
  ::delete-dynamic-fieldset
  (fn [db [_ {:keys [form-id index]}]]
-   (update-in db [:form form-id] drop-index index)))
+   (-> db
+       (update-in [:form form-id] drop-index index)
+       (update-in [:form-errors form-id]
+                  (fn [v] (remove #(= (:index %) index) v))))))
