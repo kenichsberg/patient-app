@@ -530,13 +530,11 @@
 (defn change-dynamic-field
   ;; ality - 4
   ([form-id
-    ;first-field
     validation-rules
     {:keys [field-type index field-id]}
     event]                        ;; without date-unit
    (rf/dispatch
     [::events/on-change-dynamic-field {:form-id form-id
-                                       ;:first-field first-field
                                        :field-type field-type
                                        :index index
                                        :field-id field-id
@@ -546,7 +544,6 @@
                                        :validation-rules validation-rules}]))
   ;; ality - 5
   ([form-id
-    ;first-field
     validation-rules
     {:keys [field-type index field-id]}
     date-unit                     ;; with date-unit
@@ -692,10 +689,31 @@
                                     [::subs/form-field-error-message :patient-reg-form :health_insurance_number])}]]
      [primary-button {:class-attr (c [:w 50])
                       :button-type "submit"
-                      :disabled (or has-errors? submitting?)
+                      :disabled? (or has-errors? submitting?)
                       :on-click #(rf/dispatch [::events/submitting-form {:form-id :patient-reg-form}])}
       "Save"]]))
 
+;;
+;;
+;; Common template for Create / Edit Page
+;;
+(defn patient-reg-page [{:keys [title handle-submit]}]
+  [:article
+   [:h2 {:class (c [:text :gray-600] :font-extrabold :text-4xl)}
+    title]
+   [:div {:class (c [:mt 4] [:mb 8])}
+    [secondary-button {:class-attr (c [:w 70]
+                                      :text-left)
+                       :button-type "button"
+                       :on-click #(rf/dispatch [::events/trigger-navigation
+                                                "/patients"])}
+     "< Back to Patient List"]]
+   [patient-reg-form  handle-submit]])
+
+;;
+;;
+;; For patient-filter-form
+;;
 (defn operator-input [{:keys [field
                               index
                               operator
@@ -730,6 +748,10 @@
                       :error-message @(rf/subscribe
                                        [::subs/array-form-field-error-message :patient-filter-form index :operator])}])))
 
+;;
+;;
+;; For patient-filter-form
+;;
 (defn value-input [{:keys [field
                            index
                            value
@@ -809,34 +831,17 @@
 
 ;;
 ;;
-;; Common template for Create / Edit Page
-;;
-(defn patient-reg-page [{:keys [title handle-submit]}]
-  [:article
-   [:h2 {:class (c [:text :gray-600] :font-extrabold :text-4xl)}
-    title]
-   [:div {:class (c [:mt 4] [:mb 8])}
-    [secondary-button {:class-attr (c [:w 70]
-                                      :text-left)
-                       :button-type "button"
-                       :on-click #(rf/dispatch [::events/trigger-navigation
-                                                "/patients"])}
-     "< Back to Patient List"]]
-   [patient-reg-form  handle-submit]])
-
-;;
-;;
 ;; Filter Array Form
 ;;
 (defn patient-filter-form []
-  (let [fieldsets @(rf/subscribe [::subs/array-form-indexed :patient-filter-form])
+  (let [filters @(rf/subscribe [::subs/array-form-indexed :patient-filter-form])
+        keywords @(rf/subscribe [::subs/form :patient-search])
         validation-rules (:patient-filter-form validator-map)
         handle-change (partial change-dynamic-field
-                               :patient-filter-form ;:field 
+                               :patient-filter-form
                                validation-rules)
         handle-blur (partial blur-field :patient-filter-form validation-rules)
-        has-errors? @(rf/subscribe [::subs/has-form-errors? :patient-filter-form])
-        submitting? @(rf/subscribe [::subs/form-submitting? :patient-filter-form])]
+        has-errors? @(rf/subscribe [::subs/has-form-errors? :patient-filter-form])]
     [:form {:id :patient-filter-form}
      (doall
       (map (fn [{:keys [index
@@ -849,7 +854,7 @@
                         value-id]}]
              [:fieldset {:key uuid
                          :class (c [:w 260] [:h 24]
-                                   :flex :flex-row :justify-between; :items-center
+                                   :flex :flex-row :justify-between
                                    [:bg :gray-200]
                                    [:border 2 :gray-300] [:rounded :xl]
                                    [:px 5] [:py 2] [:mb 2])}
@@ -893,24 +898,22 @@
                                                   {:form-id :patient-filter-form
                                                    :index index}])}
                 "x"]]])
-           fieldsets))
-     [secondary-button {:class-attr (c [:w 25]
-                                       ;:text-sm)
-                                       )
+           filters))
+     [secondary-button {:class-attr (c [:w 25])
                         :button-type "button"
-                        :on-click #(rf/dispatch [::events/add-dynamic-fieldset
-                                                 {:form-id :patient-filter-form}])}
+                        :on-click #(rf/dispatch [::events/add-filter
+                                                 {:form-id :patient-filter-form
+                                                  :validation-rules validation-rules}])}
+
       "+ Add Filter"]
-     (when (seq fieldsets)
+     (when (seq filters)
        [primary-button {:class-attr (c [:w 25]
-                                       ;:text-sm
                                        [:ml 6])
                         :button-type "button"
-                        :disabled (or has-errors? submitting?)
-                        :on-click #((rf/dispatch [::events/submitting-form
-                                                  {:form-id :patient-filter-form}])
-                                    (rf/dispatch [::events/search-patients
-                                                  {:filters fieldsets}]))}
+                        :disabled? has-errors?
+                        :on-click  #(rf/dispatch [::events/search-patients
+                                                  {:keywords keywords
+                                                   :filters filters}])}
         "Apply"])]))
 
 ;;
@@ -939,23 +942,28 @@
                     [:bg :indigo-100]
                     [:border 2 :gray-300] [:rounded :xl]
                     [:mt 5] [:mb 3] [:px 5] [:py 4])}
-    [:input {:class (c :w-full :w-max-2xl
-                       [:h 15]
-                       :text-base
-                       ;[:border 1] [:border-opacity 60] 
-                       [:border 2 :gray-500]
-                       [:focus-within [:border 2 :teal-500]]
-                       [:rounded :lg]
-                       [:pl 10])
-             :type "text"
-             :name "keywords"
-             :placeholder "Name or Health Insurance Number"
-             :on-change #(rf/dispatch [::events/search-patients
-                                       {:keywords (-> %
-                                                      .-target
-                                                      .-value)}])
-             :style {:outline "2px solid transparent"
-                     :outline-offset "2px"}}]]
+    [:form {:id :patient-search
+            :class (c :w-full)}
+     [:input {:class (c :w-full :w-max-2xl :w-min-full
+                        [:h 15]
+                        :text-base
+                        [:border 2 :gray-500]
+                        [:focus-within [:border 2 :teal-500]]
+                        [:rounded :lg]
+                        [:pl 10])
+              :type "text"
+              :name "keywords"
+              :placeholder "Name or Health Insurance Number"
+              :value @(rf/subscribe [::subs/form :patient-search])
+              :on-change #(rf/dispatch [::events/on-change-search-keywords
+                                        {:keywords (-> %
+                                                       .-target
+                                                       .-value)
+                                         :filter @(rf/subscribe
+                                                   [::subs/array-form-indexed
+                                                    :patient-filter-form])}])
+              :style {:outline "2px solid transparent"
+                      :outline-offset "2px"}}]]]
    [patient-filter-form]
    [:ul {:class (c [:mt 7])}
     [:li {:class (c [:h 18]
@@ -964,7 +972,6 @@
                     [:border 2 :gray-300] [:rounded :xl]
                     :shadow
                     [:text :gray-700] :text-lg :text-center :font-semibold
-                    ;:bg-gradient-to-br :from-bluegray-100 :to-bluegray-200
                     [:my 2] [:px 5] [:py 2])}
      [:span {:class (c [:w 50])} "NAME"]
      [:span {:class (c [:w 10])} "GENDER"]
@@ -989,7 +996,6 @@
                            [:hover [:border 3 :green-500]
                             :shadow-lg]
                            [:text :gray-800] :text-center :text-base :font-sans
-                           ;:bg-gradient-to-br :from-bluegray-100 :to-bluegray-200
                            [:my 2] [:px 5] [:py 2]
                            :cursor-pointer
                            :transition [:duration 200])
@@ -1000,8 +1006,7 @@
              name]
             [:span {:class (c [:w 10])} gender]
             [:span {:class (c [:w 50])} birth]
-            [:span {:class (c [:w 70])}
-             address]
+            [:span {:class (c [:w 70])} address]
             [:span {:class (c [:w 60])} health_insurance_number]
             [:button {:class (c [:bg-opacity 0]
                                 [:text :gray-600] :text-3xl
@@ -1020,7 +1025,7 @@
                                             data @(rf/subscribe [::subs/form
                                                                  :patient-reg-form])]
                                         (.preventDefault event)
-                                        (rf/dispatch [::events/create-patient
+                                        (rf/dispatch [::events/update-patient
                                                       id
                                                       {:values data}])))}])
 

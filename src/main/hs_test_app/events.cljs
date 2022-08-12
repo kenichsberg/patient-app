@@ -89,6 +89,7 @@
 (rf/reg-event-db
  ::set-patients
  (fn [db [_ res]]
+   ;TODO add query params to db to refer filters and keywords from view
    (assoc db
           :patients res
           :patient-in-edit nil)))
@@ -106,6 +107,12 @@
                                 :filters filtervecs}]
                               1000]})))
 
+(rf/reg-event-fx
+ ::on-change-search-keywords
+ (fn [cofx [_ {:keys [keywords filters]}]]
+   {:db (assoc-in (:db cofx) [:form :patient-search] keywords)
+    :fx [[:dispatch [::search-patients {:keywords keywords
+                                        :filters filters}]]]}))
 
 (rf/reg-event-fx
  ::fetch-patient-by-id
