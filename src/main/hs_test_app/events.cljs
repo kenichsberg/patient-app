@@ -32,7 +32,7 @@
 (rf/reg-event-fx
  ::init-popstate-listener
  (fn []
-   {::fx/init-popstate-listener []}))
+   {::fx/init-popstate-listener nil}))
 
 (rf/reg-event-fx
  ::initial-navigation
@@ -43,7 +43,7 @@
          ;route (:match matched)
          ;path-params (if (empty? (:params matched)) nil (:params matched))
          query-params (utils/querystr->map q-str)]
-     {:dispatch [::trigger-navigation path query-params ""]})))
+     {:dispatch [::trigger-navigation path query-params]})))
 
 (rf/reg-event-fx
  ::trigger-navigation
@@ -100,12 +100,12 @@
    (let [filtervecs (mapv (fn [{:keys [field operator value]}]
                             [field operator value])
                           filters)]
-     {::fx/dispatch-debounce [:search-patients
-                              [::trigger-navigation
-                               "/patients"
-                               {:keywords keywords
-                                :filters filtervecs}]
-                              1000]})))
+     {::fx/dispatch-debounce {:id :search-patients
+                              :event [::trigger-navigation
+                                      "/patients"
+                                      {:keywords keywords
+                                       :filters filtervecs}]
+                              :timeout 1000}})))
 
 (rf/reg-event-fx
  ::on-change-search-keywords
@@ -202,16 +202,16 @@
                    value
                    validation-rules
                    date-unit]}]]
-   {::fx/dispatch-debounce [(-> (str "update-" (name form-id) "-" (name field-id))
-                                keyword)
-                            [::update-field
-                             {:field-type field-type
-                              :form-id form-id
-                              :field-id field-id
-                              :date-unit date-unit
-                              :value value
-                              :validation-rules validation-rules}]
-                            1000]}))
+   {::fx/dispatch-debounce {:id (-> (str "update-" (name form-id) "-" (name field-id))
+                                    keyword)
+                            :event [::update-field
+                                    {:field-type field-type
+                                     :form-id form-id
+                                     :field-id field-id
+                                     :date-unit date-unit
+                                     :value value
+                                     :validation-rules validation-rules}]
+                            :timeout 1000}}))
 
 (rf/reg-event-db
  ::update-dynamic-field
@@ -242,11 +242,10 @@
                    index
                    field-id]
             :as params}]]
-   {::fx/dispatch-debounce [(-> (str (name form-id) "/" index "/" (name field-id))
-                                keyword)
-                            [::update-dynamic-field
-                             params]
-                            1000]}))
+   {::fx/dispatch-debounce {:id (-> (str (name form-id) "/" index "/" (name field-id))
+                                    keyword)
+                            :event [::update-dynamic-field params]
+                            :timeout 1000}}))
 
 (rf/reg-event-db
  ::update-errors

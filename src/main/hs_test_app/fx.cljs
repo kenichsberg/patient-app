@@ -5,9 +5,15 @@
             [hs-test-app.routes :as routes]
             [hs-test-app.utils :as utils]))
 
+(comment
+  (:match (route-map/match "patients/5/edit" routes/routes))
+  (:match (route-map/match "patients/create" routes/routes))
+  (:match (route-map/match "patients?keywords=a" routes/routes))
+  (utils/map->querystr {:keywords "a" :filters [["gender" "eq" "true"] ["address" "gt" "N.Y."]]}))
+
 ;;
 ;;
-;; An atom which grasps the unique key of a popstate event listener.
+;; Grasping the unique key of a popstate event listener.
 ;;
 (defonce popstate-listener
   (atom ""))
@@ -22,12 +28,6 @@
                            routes/on-popstate
                            false))))
 
-(comment
-  (:match (route-map/match "patients/5/edit" routes/routes))
-  (:match (route-map/match "patients/create" routes/routes))
-  (:match (route-map/match "patients?keywords=a" routes/routes))
-  (utils/map->querystr {:keywords "a" :filters [["gender" "eq" "true"] ["address" "gt" "N.Y."]]}))
-
 (defn push-state! [resource path-params query-params url]
   (.pushState js/window.history resource "" url)
   ;; history.pushState() call doesn't invoke a popstate event,
@@ -36,11 +36,10 @@
 
 (rf/reg-fx
  ::trigger-navigation
- ;; NOTE 
  ;; Since route-map/url seems to behave inconsistently,
  ;; inevitable to use only route-map/match.
  ;; For this reason, the 1st argment of this func isn't to be a page resource,
- ;; but a URL path without query string (which isn't an efficient way,
+ ;; but a URL path without query string (which isn't the most efficient way,
  ;; because it requires to include path-params values as a part of URL path string,
  ;; and then, should parse it to get page resource and path-params).
  (fn [[base-path query-params old-url]]
@@ -55,17 +54,19 @@
 
 ;;
 ;;
-;; An atom for debounce 
+;; Grasping event ids (unique keys) which are debouncing now 
 ;;
-(defonce timeouts
+(defonce debouncing-ids
   (atom {}))
 
 (rf/reg-fx
  ::dispatch-debounce
- (fn [[id event-vec n]]
-   (js/clearTimeout (@timeouts id))
-   (swap! timeouts assoc id
+ (fn [{:keys [id event timeout]}]
+   (js/clearTimeout (@debouncing-ids id))
+   (swap! debouncing-ids
+          assoc
+          id
           (js/setTimeout (fn []
-                           (rf/dispatch event-vec)
-                           (swap! timeouts dissoc id))
-                         n))))
+                           (rf/dispatch event)
+                           (swap! debouncing-ids dissoc id))
+                         timeout))))
