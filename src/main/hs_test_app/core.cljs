@@ -4,7 +4,7 @@
             [hs-test-app.config :as config]
             [hs-test-app.events]
             [hs-test-app.subs]
-            [hs-test-app.fx]
+            [hs-test-app.routes]
             [hs-test-app.views :as views]))
 
 (defn dev-setup []
