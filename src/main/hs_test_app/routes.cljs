@@ -1,5 +1,5 @@
 (ns hs-test-app.routes
-  (:require [re-frame.core :as rf]))
+  (:require [re-frame.core :refer [dispatch]]))
 
 (def routes
   {"patients" {:. :hs-test-app.views/list
@@ -10,5 +10,4 @@
   (. js/console log js-event)
   (. js/console log js-event.state)
   (let [resource (keyword js-event.state.fqn)]
-    (rf/dispatch [:hs-test-app.events/navigated
-                  [resource path-params query-params url]])))
+    (dispatch [:navigated [resource path-params query-params url]])))

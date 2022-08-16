@@ -1,10 +1,10 @@
 (ns hs-test-app.views
   (:require  [react :as react]
              [reagent.core :as r]
-             [re-frame.core :as rf]
+             [re-frame.core :refer [dispatch subscribe]]
              [stylo.rule :refer [rule defrules]]
-             [hs-test-app.events :as events]
-             [hs-test-app.subs :as subs]
+             ;[hs-test-app.events :as events]
+             ;[hs-test-app.subs :as subs]
              [hs-test-app.validation :as v])
   (:require-macros [stylo.core :refer [c]]))
 
@@ -347,7 +347,7 @@
 ;;          :embedded-input {:input    {:class (c xxx)  :disable-default? boolean}}}}
 (defn date-input [{:keys [label
                           size
-                          class-attrs
+                          ;class-attrs
                           year-field-name
                           month-field-name
                           day-field-name
@@ -503,9 +503,40 @@
     validation-rules
     {:keys [field-type field-id]}
     event]                        ;; without date-unit
-   (rf/dispatch
-    [::events/on-change-field {:form-id form-id
+   (dispatch
+    [:on-change-field {:form-id form-id
+                       :field-type field-type
+                       :field-id field-id
+                       :value (-> event
+                                  .-target
+                                  .-value)
+                       :validation-rules validation-rules}]))
+  ;; ality - 5
+  ([form-id
+    validation-rules
+    {:keys [field-type field-id]}
+    date-unit                     ;; with date-unit
+    event]
+   (dispatch
+    [:on-change-field {:form-id form-id
+                       :field-type field-type
+                       :field-id field-id
+                       :date-unit date-unit
+                       :value (-> event
+                                  .-target
+                                  .-value)
+                       :validation-rules validation-rules}])))
+
+(defn change-dynamic-field
+  ;; ality - 4
+  ([form-id
+    validation-rules
+    {:keys [field-type index field-id]}
+    event]                        ;; without date-unit
+   (dispatch
+    [:on-change-dynamic-field {:form-id form-id
                                :field-type field-type
+                               :index index
                                :field-id field-id
                                :value (-> event
                                           .-target
@@ -514,12 +545,13 @@
   ;; ality - 5
   ([form-id
     validation-rules
-    {:keys [field-type field-id]}
+    {:keys [field-type index field-id]}
     date-unit                     ;; with date-unit
     event]
-   (rf/dispatch
-    [::events/on-change-field {:form-id form-id
+   (dispatch
+    [:on-change-dynamic-field {:form-id form-id
                                :field-type field-type
+                               :index index
                                :field-id field-id
                                :date-unit date-unit
                                :value (-> event
@@ -527,42 +559,10 @@
                                           .-value)
                                :validation-rules validation-rules}])))
 
-(defn change-dynamic-field
-  ;; ality - 4
-  ([form-id
-    validation-rules
-    {:keys [field-type index field-id]}
-    event]                        ;; without date-unit
-   (rf/dispatch
-    [::events/on-change-dynamic-field {:form-id form-id
-                                       :field-type field-type
-                                       :index index
-                                       :field-id field-id
-                                       :value (-> event
-                                                  .-target
-                                                  .-value)
-                                       :validation-rules validation-rules}]))
-  ;; ality - 5
-  ([form-id
-    validation-rules
-    {:keys [field-type index field-id]}
-    date-unit                     ;; with date-unit
-    event]
-   (rf/dispatch
-    [::events/on-change-dynamic-field {:form-id form-id
-                                       :field-type field-type
-                                       :index index
-                                       :field-id field-id
-                                       :date-unit date-unit
-                                       :value (-> event
-                                                  .-target
-                                                  .-value)
-                                       :validation-rules validation-rules}])))
-
 (defn blur-field [form-id validation-rules]
-  (rf/dispatch
-   [::events/update-errors {:form-id form-id
-                            :validation-rules validation-rules}]))
+  (dispatch
+   [:update-errors {:form-id form-id
+                    :validation-rules validation-rules}]))
 
 ;;
 ;;
@@ -577,8 +577,8 @@
   (let [validation-rules (:patient-reg-form validator-map)
         handle-change (partial change-field :patient-reg-form validation-rules)
         handle-blur (partial blur-field :patient-reg-form validation-rules)
-        has-errors? @(rf/subscribe [::subs/has-form-errors? :patient-reg-form])
-        submitting? @(rf/subscribe [::subs/form-submitting? :patient-reg-form])]
+        has-errors? @(subscribe [:has-form-errors? :patient-reg-form])
+        submitting? @(subscribe [:form-submitting? :patient-reg-form])]
     [:form {:id :patient-reg-form
             :on-submit handle-submit}
      [:div {:class (c :flex :flex-row [:gap-x 20]
@@ -590,45 +590,45 @@
                                                           :disable-default? false}}}
                    :field-name :first_name
                    :input-type "text"
-                   :default-value @(rf/subscribe
-                                    [::subs/form-field-value :patient-reg-form :first_name])
+                   :default-value @(subscribe
+                                    [:form-field-value :patient-reg-form :first_name])
                    :on-change (partial handle-change {:field-type "text"
                                                       :field-id :first_name})
                    :on-blur handle-blur
-                   :error? @(rf/subscribe
-                             [::subs/form-field-error? :patient-reg-form :first_name])
-                   :error-message @(rf/subscribe
-                                    [::subs/form-field-error-message :patient-reg-form :first_name])}]
+                   :error? @(subscribe
+                             [:form-field-error? :patient-reg-form :first_name])
+                   :error-message @(subscribe
+                                    [:form-field-error-message :patient-reg-form :first_name])}]
       [text-field {:label "Last Name"
                    :frame-style :outline
                    :field-name :last_name
                    :class-attrs {:input-frame {:fieldset {:class (c [:w 60])
                                                           :disable-default? false}}}
                    :input-type "text"
-                   :default-value @(rf/subscribe
-                                    [::subs/form-field-value :patient-reg-form :last_name])
+                   :default-value @(subscribe
+                                    [:form-field-value :patient-reg-form :last_name])
                    :on-change (partial handle-change {:field-type "text"
                                                       :field-id :last_name})
                    :on-blur handle-blur
-                   :error? @(rf/subscribe
-                             [::subs/form-field-error? :patient-reg-form :last_name])
-                   :error-message @(rf/subscribe
-                                    [::subs/form-field-error-message :patient-reg-form :last_name])}]
+                   :error? @(subscribe
+                             [:form-field-error? :patient-reg-form :last_name])
+                   :error-message @(subscribe
+                                    [:form-field-error-message :patient-reg-form :last_name])}]
       [select-picker {:label "Gender"
                       :frame-style :outline
                       :class-attrs {:input-frame {:fieldset {:class (c [:w 60])
                                                              :disable-default? false}}}
                       :field-name :gender
-                      :default-value @(rf/subscribe
-                                       [::subs/form-field-value :patient-reg-form :gender])
+                      :default-value @(subscribe
+                                       [:form-field-value :patient-reg-form :gender])
                       :options gender-options
                       :on-change (partial handle-change {:field-type "text"
                                                          :field-id :gender})
                       :on-blur handle-blur
-                      :error? @(rf/subscribe
-                                [::subs/form-field-error? :patient-reg-form :gender])
-                      :error-message @(rf/subscribe
-                                       [::subs/form-field-error-message :patient-reg-form :gender])}]]
+                      :error? @(subscribe
+                                [:form-field-error? :patient-reg-form :gender])
+                      :error-message @(subscribe
+                                       [:form-field-error-message :patient-reg-form :gender])}]]
      [:div {:class (c :flex :flex-row [:gap-x 20]
                       [:mb 5])}
       (let [{:keys [year
@@ -636,8 +636,8 @@
                     day
                     year-field-name
                     month-field-name
-                    day-field-name]} @(rf/subscribe
-                                       [::subs/form-date-value :patient-reg-form :birth])]
+                    day-field-name]} @(subscribe
+                                       [:form-date-value :patient-reg-form :birth])]
         [date-input {:label "Birth"
                      :class-attrs {:date {:input-frame {:fieldset {:class (c [:w 140])
                                                                    :disable-default? false}}}}
@@ -649,10 +649,10 @@
                      :day day
                      :on-change (partial handle-change {:field-type "date"
                                                         :field-id :birth})
-                     :error? @(rf/subscribe
-                               [::subs/form-field-error? :patient-reg-form :birth])
-                     :error-message @(rf/subscribe
-                                      [::subs/form-field-error-message :patient-reg-form :birth])}])]
+                     :error? @(subscribe
+                               [:form-field-error? :patient-reg-form :birth])
+                     :error-message @(subscribe
+                                      [:form-field-error-message :patient-reg-form :birth])}])]
      [:div {:class (c :flex :flex-row
                       [:mb 5])}
       [text-field {:label "Address"
@@ -661,15 +661,15 @@
                    :class-attrs {:input-frame {:fieldset {:class (c [:w 150])
                                                           :disable-default? false}}}
                    :input-type "text"
-                   :default-value @(rf/subscribe
-                                    [::subs/form-field-value :patient-reg-form :address])
+                   :default-value @(subscribe
+                                    [:form-field-value :patient-reg-form :address])
                    :on-change (partial handle-change {:field-type "text"
                                                       :field-id :address})
                    :on-blur handle-blur
-                   :error? @(rf/subscribe
-                             [::subs/form-field-error? :patient-reg-form :address])
-                   :error-message @(rf/subscribe
-                                    [::subs/form-field-error-message :patient-reg-form :address])}]]
+                   :error? @(subscribe
+                             [:form-field-error? :patient-reg-form :address])
+                   :error-message @(subscribe
+                                    [:form-field-error-message :patient-reg-form :address])}]]
      [:div {:class (c :flex :flex-row
                       [:mb 20])}
       [text-field {:label "Health Insurance Number"
@@ -678,19 +678,19 @@
                    :class-attrs {:input-frame {:fieldset {:class (c [:w 80])
                                                           :disable-default? false}}}
                    :input-type "tel"
-                   :default-value @(rf/subscribe
-                                    [::subs/form-field-value :patient-reg-form :health_insurance_number])
+                   :default-value @(subscribe
+                                    [:form-field-value :patient-reg-form :health_insurance_number])
                    :on-change (partial handle-change {:field-type "text"
                                                       :field-id :health_insurance_number})
                    :on-blur handle-blur
-                   :error? @(rf/subscribe
-                             [::subs/form-field-error? :patient-reg-form :health_insurance_number])
-                   :error-message @(rf/subscribe
-                                    [::subs/form-field-error-message :patient-reg-form :health_insurance_number])}]]
+                   :error? @(subscribe
+                             [:form-field-error? :patient-reg-form :health_insurance_number])
+                   :error-message @(subscribe
+                                    [:form-field-error-message :patient-reg-form :health_insurance_number])}]]
      [primary-button {:class-attr (c [:w 50])
                       :button-type "submit"
                       :disabled? (or has-errors? submitting?)
-                      :on-click #(rf/dispatch [::events/submitting-form {:form-id :patient-reg-form}])}
+                      :on-click #(dispatch [:submitting-form {:form-id :patient-reg-form}])}
       "Save"]]))
 
 ;;
@@ -705,8 +705,8 @@
     [secondary-button {:class-attr (c [:w 70]
                                       :text-left)
                        :button-type "button"
-                       :on-click #(rf/dispatch [::events/trigger-navigation
-                                                "/patients"])}
+                       :on-click #(dispatch [:trigger-navigation
+                                             "/patients"])}
      "< Back to Patient List"]]
    [patient-reg-form  handle-submit]])
 
@@ -743,10 +743,10 @@
                                                      :index index
                                                      :field-id :operator})
                       :on-blur on-blur
-                      :error? @(rf/subscribe
-                                [::subs/array-form-field-error? :patient-filter-form index :operator])
-                      :error-message @(rf/subscribe
-                                       [::subs/array-form-field-error-message :patient-filter-form index :operator])}])))
+                      :error? @(subscribe
+                                [:array-form-field-error? :patient-filter-form index :operator])
+                      :error-message @(subscribe
+                                       [:array-form-field-error-message :patient-filter-form index :operator])}])))
 
 ;;
 ;;
@@ -773,10 +773,10 @@
                                                                         :index index
                                                                         :field-id :value})
                                          :on-blur on-blur
-                                         :error? @(rf/subscribe
-                                                   [::subs/array-form-field-error? :patient-filter-form index :value])
-                                         :error-message @(rf/subscribe
-                                                          [::subs/array-form-field-error-message
+                                         :error? @(subscribe
+                                                   [:array-form-field-error? :patient-filter-form index :value])
+                                         :error-message @(subscribe
+                                                          [:array-form-field-error-message
                                                            :patient-filter-form
                                                            index
                                                            :value])}]
@@ -785,8 +785,8 @@
                                       day
                                       year-field-name
                                       month-field-name
-                                      day-field-name]} @(rf/subscribe
-                                                         [::subs/array-form-date-value
+                                      day-field-name]} @(subscribe
+                                                         [:array-form-date-value
                                                           :patient-filter-form
                                                           index
                                                           :value])]
@@ -803,10 +803,10 @@
                                        :on-change (partial on-change {:field-type "date"
                                                                       :index index
                                                                       :field-id :value})
-                                       :error? @(rf/subscribe
-                                                 [::subs/array-form-field-error? :patient-filter-form index :value])
-                                       :error-message @(rf/subscribe
-                                                        [::subs/array-form-field-error-message
+                                       :error? @(subscribe
+                                                 [:array-form-field-error? :patient-filter-form index :value])
+                                       :error-message @(subscribe
+                                                        [:array-form-field-error-message
                                                          :patient-filter-form
                                                          index
                                                          :value])}])
@@ -821,10 +821,10 @@
                                                         :index index
                                                         :field-id :value})
                          :on-blur on-blur
-                         :error? @(rf/subscribe
-                                   [::subs/array-form-field-error? :patient-filter-form index :value])
-                         :error-message @(rf/subscribe
-                                          [::subs/array-form-field-error-message
+                         :error? @(subscribe
+                                   [:array-form-field-error? :patient-filter-form index :value])
+                         :error-message @(subscribe
+                                          [:array-form-field-error-message
                                            :patient-filter-form
                                            index
                                            :value])}])))
@@ -834,14 +834,14 @@
 ;; Filter Array Form
 ;;
 (defn patient-filter-form []
-  (let [filters @(rf/subscribe [::subs/array-form-indexed :patient-filter-form])
-        keywords @(rf/subscribe [::subs/form :patient-search])
+  (let [filters @(subscribe [:array-form-indexed :patient-filter-form])
+        keywords @(subscribe [:form :patient-search])
         validation-rules (:patient-filter-form validator-map)
         handle-change (partial change-dynamic-field
                                :patient-filter-form
                                validation-rules)
         handle-blur (partial blur-field :patient-filter-form validation-rules)
-        has-errors? @(rf/subscribe [::subs/has-form-errors? :patient-filter-form])]
+        has-errors? @(subscribe [:has-form-errors? :patient-filter-form])]
     [:form {:id :patient-filter-form}
      (doall
       (map (fn [{:keys [index
@@ -872,10 +872,10 @@
                                                                   :index index
                                                                   :field-id :field})
                                :on-blur handle-blur
-                               :error? @(rf/subscribe
-                                         [::subs/array-form-field-error? :patient-filter-form index :field])
-                               :error-message @(rf/subscribe
-                                                [::subs/array-form-field-error-message :patient-filter-form index :field])}]
+                               :error? @(subscribe
+                                         [:array-form-field-error? :patient-filter-form index :field])
+                               :error-message @(subscribe
+                                                [:array-form-field-error-message :patient-filter-form index :field])}]
                [operator-input {:index index
                                 :field field
                                 :operator operator
@@ -894,16 +894,16 @@
                                    [:hover [:text :red-600]]
                                    :transition [:duration 200])
                          :type "button"
-                         :on-click #(rf/dispatch [::events/delete-dynamic-fieldset
-                                                  {:form-id :patient-filter-form
-                                                   :index index}])}
+                         :on-click #(dispatch [:delete-dynamic-fieldset
+                                               {:form-id :patient-filter-form
+                                                :index index}])}
                 "x"]]])
            filters))
      [secondary-button {:class-attr (c [:w 25])
                         :button-type "button"
-                        :on-click #(rf/dispatch [::events/add-filter
-                                                 {:form-id :patient-filter-form
-                                                  :validation-rules validation-rules}])}
+                        :on-click #(dispatch [:add-filter
+                                              {:form-id :patient-filter-form
+                                               :validation-rules validation-rules}])}
 
       "+ Add Filter"]
      (when (seq filters)
@@ -911,9 +911,9 @@
                                        [:ml 6])
                         :button-type "button"
                         :disabled? has-errors?
-                        :on-click  #(rf/dispatch [::events/search-patients
-                                                  {:keywords keywords
-                                                   :filters filters}])}
+                        :on-click  #(dispatch [:search-patients
+                                               {:keywords keywords
+                                                :filters filters}])}
         "Apply"])]))
 
 ;;
@@ -934,8 +934,8 @@
 
     [outline-button {:class-attr (c [:w 50])
                      :button-type "button"
-                     :on-click #(rf/dispatch [::events/trigger-navigation
-                                              "/patients/create"])}
+                     :on-click #(dispatch [:trigger-navigation
+                                           "/patients/create"])}
      "Create New Patient"]]
    [:div {:class (c [:w 180] [:h 24]
                     :flex :flex-row :justify-between
@@ -954,14 +954,14 @@
               :type "text"
               :name "keywords"
               :placeholder "Name or Health Insurance Number"
-              :value @(rf/subscribe [::subs/form :patient-search])
-              :on-change #(rf/dispatch [::events/on-change-search-keywords
-                                        {:keywords (-> %
-                                                       .-target
-                                                       .-value)
-                                         :filter @(rf/subscribe
-                                                   [::subs/array-form-indexed
-                                                    :patient-filter-form])}])
+              :value @(subscribe [:form :patient-search])
+              :on-change #(dispatch [:on-change-search-keywords
+                                     {:keywords (-> %
+                                                    .-target
+                                                    .-value)
+                                      :filter @(subscribe
+                                                [:array-form-indexed
+                                                 :patient-filter-form])}])
               :style {:outline "2px solid transparent"
                       :outline-offset "2px"}}]]]
    [patient-filter-form]
@@ -999,8 +999,8 @@
                            [:my 2] [:px 5] [:py 2]
                            :cursor-pointer
                            :transition [:duration 200])
-                 :on-click #(rf/dispatch [::events/trigger-navigation
-                                          (str "/patients/" id "/edit")])}
+                 :on-click #(dispatch [:trigger-navigation
+                                       (str "/patients/" id "/edit")])}
             [:span {:class (c [:w 50]
                               :text-lg)}
              name]
@@ -1015,28 +1015,28 @@
                       :type "button"
                       :on-click #(prn id)}
              "x"]])
-         @(rf/subscribe [::subs/patients-formatted]))]])
+         @(subscribe [:patients-formatted]))]])
 ;)
 
 (defmethod view ::edit []
   [patient-reg-page {:title "Edit Patient Data"
                      :handle-submit (fn [event]
-                                      (let [id @(rf/subscribe [::subs/patient-in-edit])
-                                            data @(rf/subscribe [::subs/form
-                                                                 :patient-reg-form])]
+                                      (let [id @(subscribe [:patient-in-edit])
+                                            data @(subscribe [:form
+                                                              :patient-reg-form])]
                                         (.preventDefault event)
-                                        (rf/dispatch [::events/update-patient
-                                                      id
-                                                      {:values data}])))}])
+                                        (dispatch [:update-patient
+                                                   id
+                                                   {:values data}])))}])
 
 (defmethod view ::create []
   [patient-reg-page {:title "Create Patient Data"
                      :handle-submit (fn [event]
-                                      (let [data @(rf/subscribe [::subs/form
-                                                                 :patient-reg-form])]
+                                      (let [data @(subscribe [:form
+                                                              :patient-reg-form])]
                                         (.preventDefault event)
-                                        (rf/dispatch [::events/create-patient
-                                                      {:values data}])))}])
+                                        (dispatch [:create-patient
+                                                   {:values data}])))}])
 
 (defn main-panel []
   [:main {:class (c :h-min-screen
@@ -1054,4 +1054,4 @@
               [:bg :white]
               [:rounded 24]
               [:px 10] [:pt 8] [:pb 10])}
-     [view @(rf/subscribe [::subs/current-route])]]]])
+     [view @(subscribe [:current-route])]]]])

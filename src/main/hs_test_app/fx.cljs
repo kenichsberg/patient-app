@@ -1,6 +1,6 @@
 (ns hs-test-app.fx
   (:require [goog.events :as gevents]
-            [re-frame.core :as rf]
+            [re-frame.core :refer [reg-fx dispatch]]
             [route-map.core :as route-map]
             [hs-test-app.routes :as routes]
             [hs-test-app.utils :as utils]))
@@ -18,8 +18,8 @@
 (defonce popstate-listener
   (atom ""))
 
-(rf/reg-fx
- ::init-popstate-listener
+(reg-fx
+ :init-popstate-listener
  (fn []
    (gevents/unlistenByKey @popstate-listener)
    (reset! popstate-listener
@@ -34,8 +34,8 @@
   ;; so manually needed to trigger it.
   (routes/on-popstate (js-obj "state" resource) path-params query-params url))
 
-(rf/reg-fx
- ::trigger-navigation
+(reg-fx
+ :navigation
  ;; Since route-map/url seems to behave inconsistently,
  ;; inevitable to use only route-map/match.
  ;; For this reason, the 1st argment of this func isn't to be a page resource,
@@ -59,14 +59,14 @@
 (defonce debouncing-ids
   (atom {}))
 
-(rf/reg-fx
- ::dispatch-debounce
+(reg-fx
+ :dispatch-debounce
  (fn [{:keys [id event timeout]}]
    (js/clearTimeout (@debouncing-ids id))
    (swap! debouncing-ids
           assoc
           id
           (js/setTimeout (fn []
-                           (rf/dispatch event)
+                           (dispatch event)
                            (swap! debouncing-ids dissoc id))
                          timeout))))

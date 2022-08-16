@@ -1,19 +1,24 @@
 (ns hs-test-app.subs
-  (:require [re-frame.core :as rf]
+  (:require [re-frame.core :refer [reg-sub subscribe]]
             [clojure.string :as str]))
 
-(rf/reg-sub
- ::current-route
+(reg-sub
+ :current-route
  :-> :route)
 
 (rf/reg-sub
  ::patients
+(reg-sub
+(reg-sub
+(reg-sub
+(reg-sub
+ :patients
  :-> :patients)
 
-(rf/reg-sub
- ::patients-formatted
+(reg-sub
+ :patients-formatted
  (fn [_ _]
-   (rf/subscribe [::patients]))
+   (subscribe [:patients]))
  (fn [patients _]
    (map (fn [{:keys [first_name last_name] :as patient}]
           (-> patient
@@ -28,41 +33,48 @@
                                   (.format (js/Date. %))))))
         patients)))
 
-(rf/reg-sub
- ::patient-in-edit
+(reg-sub
+ :patient-in-edit
  :-> :patient-in-edit)
 
-(rf/reg-sub
- ::form
+(reg-sub
+ :form
  (fn [db [_ form-id]]
    (get-in db [:form form-id] [])))
 
-(rf/reg-sub
- ::form-submitting?
+(reg-sub
+ :form-submitting?
  (fn [db [_ form-id]]
    (get-in db [:form-submitting? form-id] false)))
 
-(rf/reg-sub
- ::form-errors
+(reg-sub
+ :form-errors
  (fn [db [_ form-id]]
    (get-in db [:form-errors form-id] [])))
 
-(rf/reg-sub
- ::has-form-errors?
+(reg-sub
+ :has-form-errors?
  (fn [[_ form-id] _]
-   (rf/subscribe [::form-errors form-id]))
+   (subscribe [:form-errors form-id]))
  (fn [errors _]
    (boolean (seq errors))))
 
-(rf/reg-sub
- ::form-field-value
- (fn [db [_ form-id field-id]]
-   (get-in db [:form form-id field-id] "")))
+;(reg-sub
+; :form-field-value
+; (fn [db [_ form-id field-id]]
+;   (get-in db [:form form-id field-id] "")))
+;; TODO
+(reg-sub
+ :form-field-value
+ (fn [[_ form-id] _]
+   (subscribe [:form form-id]))
+ (fn [form [_ _ field-id]]
+   (get form field-id "")))
 
-(rf/reg-sub
- ::form-date-value
+(reg-sub
+ :form-date-value
  (fn [[_ form-id field-id] _]
-   (rf/subscribe [::form-field-value form-id field-id]))
+   (subscribe [:form-field-value form-id field-id]))
  (fn [v [_ _ field-id]]
    (let [[year month day] (if (empty? v)
                             ["" "" ""]
@@ -74,33 +86,33 @@
       :month-id (-> field-id name (str "-m") keyword)
       :day-id (-> field-id name (str "-m") keyword)})))
 
-(rf/reg-sub
- ::form-field-error?
+(reg-sub
+ :form-field-error?
  (fn [[_ form-id] _]
-   (rf/subscribe [::form-errors form-id]))
+   (subscribe [:form-errors form-id]))
  (fn [errors [_ _ field-id]]
    (let [field-errors (filterv #(= (:field %) field-id) errors)]
      (some? (seq field-errors)))))
 
-(rf/reg-sub
- ::form-field-error-message
+(reg-sub
+ :form-field-error-message
  (fn [[_ form-id] _]
-   (rf/subscribe [::form-errors form-id]))
+   (subscribe [:form-errors form-id]))
  (fn [errors [_ _ field-id]]
    (let [field-errors (filterv #(= (:field %) field-id) errors)]
      (-> field-errors
          first
          :message))))
 
-(rf/reg-sub
- ::array-form-field-value
+(reg-sub
+ :array-form-field-value
  (fn [db [_ form-id index field-id]]
    (get-in db [:form form-id index field-id] "")))
 
-(rf/reg-sub
- ::array-form-indexed
+(reg-sub
+ :array-form-indexed
  (fn [[_ form-id] _]
-   (rf/subscribe [::form form-id]))
+   (subscribe [:form form-id]))
  (fn [form _]
    (map-indexed
     (fn [index m]
@@ -114,10 +126,10 @@
                   :uuid (random-uuid)} id-map)))
     form)))
 
-(rf/reg-sub
- ::array-form-date-value
+(reg-sub
+ :array-form-date-value
  (fn [[_ form-id index field-id] _]
-   (rf/subscribe [::array-form-field-value form-id index field-id]))
+   (subscribe [:array-form-field-value form-id index field-id]))
  (fn [v [_ _ _ field-id]]
    (let [[year month day] (if (empty? v)
                             ["" "" ""]
@@ -129,20 +141,20 @@
       :month-field-name (-> field-id name (str "-m") keyword)
       :day-field-name (-> field-id name (str "-m") keyword)})))
 
-(rf/reg-sub
- ::array-form-field-error?
+(reg-sub
+ :array-form-field-error?
  (fn [[_ form-id] _]
-   (rf/subscribe [::form-errors form-id]))
+   (subscribe [:form-errors form-id]))
  (fn [array-form-errors [_ _ index field-id]]
    (let [errors (->> array-form-errors
                      (filterv #(= (:index %) index))
                      (filterv #(= (:field %) field-id)))]
      (some? (seq errors)))))
 
-(rf/reg-sub
- ::array-form-field-error-message
+(reg-sub
+ :array-form-field-error-message
  (fn [[_ form-id] _]
-   (rf/subscribe [::form-errors form-id]))
+   (subscribe [:form-errors form-id]))
  (fn [array-form-errors [_ _ index field-id]]
    (let [errors (->> array-form-errors
                      (filterv #(= (:index %) index))
