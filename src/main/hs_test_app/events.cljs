@@ -33,16 +33,31 @@
                            (swap! debouncing-ids dissoc id))
                          timeout))))
 
+;;
+;;
+;;----- constatnts --------------------------------------
+;;
+;;
+;; For http-xhrio
+;;
 (def request-defaults
   {:timeout 6000
    :response-format (json-response-format {:keywords? true})
    :on-failure [:set-error]})
 
+;;
+;;
+;;----- events ------------------------------------------
+;;
 (reg-event-db
  :initialize-db
  (fn [_ _]
    db/default-db))
 
+;;
+;; Set popstate Event Listner
+;; and trigger initial Navigation for the URL put in the address bar.
+;;
 (reg-event-fx
  :init-routes
  (fn [cofx [_ route]]
@@ -67,6 +82,15 @@
          query-params (utils/querystr->map q-str)]
      {:dispatch [:trigger-navigation path query-params]})))
 
+;;
+;;
+;; Flow of Navigation
+;;  1. event    :trigger-navigation --- set fx :navigation
+;;  2. fx       :navigation         --- call history.pushState()
+;;  3. function on-popstate         --- dispatch event :navigated
+;;  4. event    :navigated          --- set view resource (to app-db :route)
+;;  5. multi-method on-navigated    --- dispatch events neccessary for new view
+;;
 (reg-event-fx
  :trigger-navigation
  (fn [cofx [_ base-path query-params]]
