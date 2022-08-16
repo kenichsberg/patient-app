@@ -1,5 +1,5 @@
 (ns hs-test-app.events
-  (:require [re-frame.core :refer [reg-event-db reg-event-fx]]
+ (:require [re-frame.core :refer [reg-event-db reg-event-fx reg-fx dispatch]]
             [clojure.string :as str]
             [day8.re-frame.http-fx]
             ;[route-map.core :as route-map]
@@ -10,6 +10,28 @@
             ;[hs-test-app.fx :as fx]
             [hs-test-app.utils :as utils]
             [hs-test-app.validation :as v]))
+
+;;
+;;
+;;----- fx ----------------------------------------------
+;;
+;;
+;; Grasping event ids (unique keys) which are debouncing now 
+;;
+(defonce debouncing-ids
+  (atom {}))
+
+(reg-fx
+ :dispatch-debounce
+ (fn [{:keys [id event timeout]}]
+   (js/clearTimeout (@debouncing-ids id))
+   (swap! debouncing-ids
+          assoc
+          id
+          (js/setTimeout (fn []
+                           (dispatch event)
+                           (swap! debouncing-ids dissoc id))
+                         timeout))))
 
 (def request-defaults
   {:timeout 6000

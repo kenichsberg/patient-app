@@ -1,5 +1,8 @@
 (ns hs-test-app.routes
-  (:require [re-frame.core :refer [dispatch]]))
+  (:require [goog.events :as gevents]
+            [re-frame.core :refer [reg-fx dispatch]]
+            [route-map.core :as route-map]
+            [hs-test-app.utils :as utils]))
 
 (def routes
   {"patients" {:. :hs-test-app.views/list
@@ -11,3 +14,44 @@
   (. js/console log js-event.state)
   (let [resource (keyword js-event.state.fqn)]
     (dispatch [:navigated [resource path-params query-params url]])))
+
+;;
+;;
+;; Grasping the unique key of a popstate event listener.
+;;
+(defonce popstate-listener
+  (atom ""))
+
+(reg-fx
+ :init-popstate-listener
+ (fn []
+   (gevents/unlistenByKey @popstate-listener)
+   (reset! popstate-listener
+           (gevents/listen js/window
+                           goog.events.EventType.POPSTATE
+                           on-popstate
+                           false))))
+
+(defn push-state! [resource path-params query-params url]
+  (.pushState js/window.history resource "" url)
+  ;; history.pushState() call doesn't invoke a popstate event,
+  ;; so manually needed to trigger it.
+  (on-popstate (js-obj "state" resource) path-params query-params url))
+
+(reg-fx
+ :navigation
+ ;; Since route-map/url seems to behave inconsistently,
+ ;; inevitable to use only route-map/match.
+ ;; For this reason, the 1st argment of this func isn't to be a page resource,
+ ;; but a URL path without query string (which isn't the most efficient way,
+ ;; because it requires to include path-params values as a part of URL path string,
+ ;; and then, should parse it to get page resource and path-params).
+ (fn [[base-path query-params old-url]]
+   (let [q-str (utils/map->querystr query-params)
+         url (str base-path q-str)]
+     ;; Proceed only when the new URL is different from the old one.
+     (when-not (= url old-url)
+       (let [matched (route-map/match base-path routes)
+             resource (:match matched)
+             path-params (:params matched)]
+         (push-state! resource path-params query-params url))))))
