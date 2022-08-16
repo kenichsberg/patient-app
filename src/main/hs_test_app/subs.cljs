@@ -6,11 +6,18 @@
  :current-route
  :-> :route)
 
-(rf/reg-sub
- ::patients
 (reg-sub
+ :path-params
+ :-> :path-params)
+
 (reg-sub
+ :query-params
+ :-> :query-params)
+
 (reg-sub
+ :url
+ :-> :url)
+
 (reg-sub
  :patients
  :-> :patients)

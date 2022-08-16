@@ -1,5 +1,6 @@
 (ns hs-test-app.events
- (:require [re-frame.core :refer [reg-event-db reg-event-fx reg-fx dispatch]]
+  (:require [goog.url :as gurl]
+            [re-frame.core :refer [inject-cofx reg-event-db reg-event-fx reg-fx dispatch]]
             [clojure.string :as str]
             [day8.re-frame.http-fx]
             ;[route-map.core :as route-map]
@@ -73,12 +74,15 @@
 
 (reg-event-fx
  :initial-navigation
- (fn []
-   (let [path (.. js/window -location -pathname)
-         q-str (.. js/window -location -search)
-         ;matched (route-map/match path routes)
-         ;route (:match matched)
-         ;path-params (if (empty? (:params matched)) nil (:params matched))
+ [(inject-cofx :raw-url)]
+ (fn [{:keys [raw-url]} _]
+   ;(let [path (.. js/window -location -pathname)
+   ;      q-str (.. js/window -location -search)
+   ;      query-params (utils/querystr->map q-str)]
+   ;  {:dispatch [:trigger-navigation path query-params]})))
+   (let [URL (gurl/resolveUrl raw-url)
+         path (.-pathname URL)
+         q-str (.-search URL)
          query-params (utils/querystr->map q-str)]
      {:dispatch [:trigger-navigation path query-params]})))
 

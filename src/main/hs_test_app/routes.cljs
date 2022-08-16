@@ -1,6 +1,6 @@
 (ns hs-test-app.routes
   (:require [goog.events :as gevents]
-            [re-frame.core :refer [reg-fx dispatch]]
+            [re-frame.core :refer [reg-cofx reg-fx dispatch]]
             [route-map.core :as route-map]
             [hs-test-app.utils :as utils]))
 
@@ -55,3 +55,17 @@
              resource (:match matched)
              path-params (:params matched)]
          (push-state! resource path-params query-params url))))))
+
+(reg-cofx
+ :raw-url
+ (fn [cofx _]
+    ;(let [path (.. js/window -location -pathname)
+    ;     q-str (.. js/window -location -search)
+    ;     ;matched (route-map/match path routes)
+    ;     ;route (:match matched)
+    ;     ;path-params (if (empty? (:params matched)) nil (:params matched))
+    ;     ;query-params (utils/querystr->map q-str)
+    ;     ]
+    ;  (assoc cofx :initial-url (str path q-str) )
+   (let [href (.. js/window -location -href)]
+     (assoc cofx :raw-url href))))
