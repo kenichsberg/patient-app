@@ -1021,7 +1021,7 @@
 (defmethod view ::edit []
   [patient-reg-page {:title "Edit Patient Data"
                      :handle-submit (fn [event]
-                                      (let [id @(subscribe [:patient-in-edit])
+                                      (let [id (:id @(subscribe [:patient-in-edit]) )
                                             data @(subscribe [:form
                                                               :patient-reg-form])]
                                         (.preventDefault event)
