@@ -15,7 +15,7 @@
 ;;
 ;; -------------------------------------------------
 (defmethod rule :w-max-screen-2xl [_]
-  [[:& {:max-width "1400px"}]])
+  [[:& {:max-width "87.5rem"}]])
 
 (defmethod rule :gap-x
   ([_] [[:& {:column-gap "1px"}]])
@@ -690,7 +690,7 @@
      [primary-button {:class-attr (c [:w 50])
                       :button-type "submit"
                       :disabled? (or has-errors? submitting?)
-                      :on-click #(dispatch [:submitting-form {:form-id :patient-reg-form}])}
+                      :on-click #(dispatch [:toggle-form-submitting :patient-reg-form true])}
       "Save"]]))
 
 ;;

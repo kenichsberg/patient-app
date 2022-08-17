@@ -61,9 +61,10 @@
 ;;
 (reg-event-fx
  :init-routes
- (fn [cofx [_ route]]
-   {:db (assoc (:db cofx)
-               :route route)
+ (fn ;[cofx [_ route]]
+   []
+   {;:db (assoc (:db cofx)
+    ;           :route route)
     :init-popstate-listener nil
     :fx [[:dispatch [:initial-navigation]]]}))
 
@@ -205,6 +206,7 @@
  :on-success-update
  (fn [_ _]
    {:fx [[:dispatch [:trigger-navigation "/patients"]]
+         [:dispatch [:toggle-form-submitting :patient-reg-form false]]
          [:dispatch [:close-form {:form-id :patient-reg-form}]]]}))
 
 (reg-event-fx
@@ -305,9 +307,9 @@
      (assoc-in db [:form-errors form-id] validation-result))))
 
 (reg-event-db
- :submitting-form
- (fn [db [_ {:keys [form-id]}]]
-   (assoc-in db [:form-submitting? form-id] true)))
+ :toggle-form-submitting
+ (fn [db [_ form-id submitting?]]
+   (assoc-in db [:form-submitting? form-id] submitting?)))
 
 (reg-event-db
  :close-form
