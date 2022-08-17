@@ -77,13 +77,13 @@
                                     (v/valid-date-string nil value)))) {:field :value
                                                                         :error-type :invalid-date}
                       :else nil))
-        error (get-error m)
-        message-map {;:required (str (-> error :field name) " is required.")
-                     :required "Required."
-                     :invalid-date "Invalid date."}]
-    {:valid? (nil? error)
-     :field (:field error)
-     :message (get message-map (:error-type error))}))
+        error-map (get-error m)
+        errortype->message {;:required (str (-> error :field name) " is required.")
+                            :required "Required."
+                            :invalid-date "Invalid date."}]
+    {:valid? (nil? error-map)
+     :field (:field error-map)
+     :message (get errortype->message (:error-type error-map))}))
 
 (def validator-map
   {:patient-reg-form {:first_name [[v/required "First Name"]]
@@ -1021,7 +1021,7 @@
 (defmethod view ::edit []
   [patient-reg-page {:title "Edit Patient Data"
                      :handle-submit (fn [event]
-                                      (let [id (:id @(subscribe [:patient-in-edit]) )
+                                      (let [id (:id @(subscribe [:patient-in-edit]))
                                             data @(subscribe [:form
                                                               :patient-reg-form])]
                                         (.preventDefault event)
