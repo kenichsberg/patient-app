@@ -1,5 +1,7 @@
 (ns hs-test-app.core
-  (:require [re-frame.core :as rf]
+  (:require [re-frame.core :refer [clear-subscription-cache!
+                                   dispatch-sync
+                                   dispatch]]
             [reagent.dom :as rdom]
             [hs-test-app.config :as config]
             [hs-test-app.events]
@@ -13,13 +15,13 @@
     (println "dev mode")))
 
 (defn mount-root []
-  (rf/clear-subscription-cache!)
+  (clear-subscription-cache!)
   (let [root-el (.getElementById js/document "app")]
     (rdom/unmount-component-at-node root-el)
     (rdom/render [views/main-panel] root-el)))
 
 (defn ^:export init []
-  (rf/dispatch-sync [:initialize-db])
-  (rf/dispatch [:init-routes])
+  (dispatch-sync [:initialize-db])
+  (dispatch [:init-routes])
   (dev-setup)
   (mount-root))
