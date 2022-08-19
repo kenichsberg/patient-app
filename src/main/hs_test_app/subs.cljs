@@ -27,18 +27,18 @@
  (fn [_ _]
    (subscribe [:patients]))
  (fn [patients _]
-   (map (fn [{:keys [first_name last_name] :as patient}]
-          (-> patient
-              (dissoc :first_name :last_name)
-              (assoc :name (str first_name " " last_name))
-              (update :gender #(if (true? %) "Male" "Female"))
-              (update :birth #(-> (js/Intl.DateTimeFormat.
-                                   "en-US"
-                                   #js {:year "numeric"
-                                        :month "short"
-                                        :day "2-digit"})
-                                  (.format (js/Date. %))))))
-        patients)))
+   (mapv (fn [{:keys [first_name last_name] :as patient}]
+           (-> patient
+               (dissoc :first_name :last_name)
+               (assoc :name (str first_name " " last_name))
+               (update :gender #(if (true? %) "Male" "Female"))
+               (update :birth #(-> (js/Intl.DateTimeFormat.
+                                    "en-US"
+                                    #js {:year "numeric"
+                                         :month "short"
+                                         :day "2-digit"})
+                                   (.format (js/Date. %))))))
+         patients)))
 
 (reg-sub
  :patient-in-edit
