@@ -107,6 +107,8 @@
   {:fx [[:dispatch [:fetch-patients
                     (get query-params :keywords)
                     (get query-params :filters)]]]})
+(defmethod on-navigated :hs-test-app.views/create []
+  {:fx [[:dispatch [:set-patient-reg-form {}]]]})
 (defmethod on-navigated :hs-test-app.views/edit [_ path-params]
   {:fx [[:dispatch [:fetch-patient-by-id (:id path-params)]]]})
 (defmethod on-navigated :default [_ _] nil)
@@ -190,7 +192,7 @@
                        :uri (str config/API_URL "/patients")
                        :params values
                        :format (json-request-format)
-                       :on-success [:trigger-navigation "/patients"])}))
+                       :on-success [:on-success-submit])}))
 
 (reg-event-fx
  :update-patient
@@ -200,10 +202,10 @@
                              :uri (str config/API_URL "/patients/" patient-id)
                              :params values
                              :format (json-request-format)
-                             :on-success [:on-success-update])]]}))
+                             :on-success [:on-success-submit])]]}))
 
 (reg-event-fx
- :on-success-update
+ :on-success-submit
  (fn [_ _]
    {:fx [[:dispatch [:trigger-navigation "/patients"]]
          [:dispatch [:toggle-form-submitting :patient-reg-form false]]
