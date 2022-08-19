@@ -12,7 +12,7 @@
   [day8.re-frame/http-fx "0.2.4"]
   [route-map "0.0.7"]
   [com.health-samurai/macrocss "0.1.0"]
-  [com.andrewmcveigh/cljs-time "0.5.2"]]
+  [day8.re-frame/test "0.1.5"]]
 
  :builds
  {:hs-test-app {:target :browser
@@ -24,7 +24,7 @@
                  {:entries [hs-test-app.core]}}
 
                 :build-options
-                {:cache-level :off}
+                {:cache-level :all}
 
                 :compiler-options
                 {:closure-defines
@@ -40,4 +40,8 @@
 
                 :release
                 {:output-dir "dist/js"
-                 :closure-defines {hs-test-app.config/API_URL "<production api url>"}}}}}
+                 :closure-defines {hs-test-app.config/API_URL "<production api url>"}}}
+  :test {:target :karma
+          :ns-regexp "-test$"
+          :output-to "target/test.js"}
+  }}
