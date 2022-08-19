@@ -86,12 +86,13 @@
      :message (get errortype->message (:error-type error-map))}))
 
 (def validator-map
-  {:patient-reg-form {:first_name [[v/required "First Name"]]
-                      :last_name [[v/required "Last Name"]]
+  {:patient-reg-form {:first_name [[v/required "First Name"] [v/alphabets]]
+                      :last_name [[v/required "Last Name"] [v/alphabets]]
                       :gender [[v/required "Gender"]]
                       :birth [[v/required "Birth"] [v/valid-date-string]]
                       :address [[v/required "Address"]]
                       :health_insurance_number [[v/required "Health Insurance Number"]
+                                                [v/numerical]
                                                 [v/health-insurance-number]]}
    :patient-filter-form valid-filter})
 

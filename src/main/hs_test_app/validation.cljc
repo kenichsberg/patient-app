@@ -48,11 +48,9 @@
 (defn- validate-per-field [validations]
   (->> validations
        (reduce (fn [acc [validator & args]]
-       ;(reduce (fn [acc validation]
-                 (prn "validator: " validator)
-                 (prn "args: " args)
+                 ;(prn "validator: " validator)
+                 ;(prn "args: " args)
                  (let [{:keys [valid? field message] :as validated} (apply validator args)]
-                 ;(let [{:keys [valid? field message]} (doall validation)]
                    (if valid?
                      acc
                      (conj acc {:field field
@@ -175,6 +173,7 @@
        (#(when (seq %) %))))
 
 (defn validate [fieldkey->rules fieldkey->values & args]
+  ;(prn fieldkey->rules fieldkey->values)
   (cond
     (and (not (map? fieldkey->rules))
          (not (fn? fieldkey->rules))) (throw #?(:clj  (Exception. "1st argument should be a map or validator function.")
@@ -202,10 +201,21 @@
 ;   :field  field
 ;   :message "Invalid value"});)
 
-(defn numerical [field value]
-  {:valid? (re-find #"^\d+$" value)
+(defn alphabets [field value]
+  {:valid? (->> value
+                str
+                (re-find #"^[a-zA-Z]+$")
+                some?)
    :field  field
-   :message "Please input numbers."});)
+   :message "Please input alphabets."})
+
+(defn numerical [field value]
+  {:valid? (->> value
+                str
+                (re-find #"^\d+$")
+                some?)
+   :field  field
+   :message "Please input numbers."})
 
 (defn valid-date-string [field value]
   {:valid? #?(:clj (try
@@ -221,7 +231,10 @@
    :message "Invalid date."})
 
 (defn health-insurance-number [field value]
-  {:valid? (some? (re-find #"^\d{12}$" value))
+  {:valid? (->> value
+                str
+                (re-find #"^\d{12}$")
+                some?)
    :field field
    :message "Incorrect number of digits."})
 
