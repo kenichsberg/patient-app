@@ -56,31 +56,20 @@
    db/default-db))
 
 ;;
-;; Set popstate Event Listner
-;; and trigger initial Navigation for the URL put in the address bar.
+;;
+;; Set popstate Event Listner and
+;; trigger initial Navigation to the URL put in the address bar.
 ;;
 (reg-event-fx
  :init-routes
- (fn ;[cofx [_ route]]
-   []
-   {;:db (assoc (:db cofx)
-    ;           :route route)
-    :init-popstate-listener nil
+ (fn []
+   {:init-popstate-listener nil
     :fx [[:dispatch [:initial-navigation]]]}))
-
-;(reg-event-fx
-; :init-popstate-listener
-; (fn []
-;   {::fx/init-popstate-listener nil}))
 
 (reg-event-fx
  :initial-navigation
  [(inject-cofx :raw-url)]
  (fn [{:keys [raw-url]} _]
-   ;(let [path (.. js/window -location -pathname)
-   ;      q-str (.. js/window -location -search)
-   ;      query-params (utils/querystr->map q-str)]
-   ;  {:dispatch [:trigger-navigation path query-params]})))
    (let [URL (gurl/resolveUrl raw-url)
          path (.-pathname URL)
          q-str (.-search URL)
@@ -93,7 +82,7 @@
 ;;  1. event    :trigger-navigation --- set fx :navigation
 ;;  2. fx       :navigation         --- call history.pushState()
 ;;  3. function on-popstate         --- dispatch event :navigated
-;;  4. event    :navigated          --- set view resource (to app-db :route)
+;;  4. event    :navigated          --- set view resource to app-db :route
 ;;  5. multi-method on-navigated    --- dispatch events neccessary for new view
 ;;
 (reg-event-fx
@@ -142,7 +131,6 @@
 (reg-event-db
  :set-patients
  (fn [db [_ res]]
-   ;TODO add query params to db to refer filters and keywords from view
    (assoc db
           :patients res
           :patient-in-edit nil)))
@@ -150,8 +138,7 @@
 (reg-event-fx
  :search-patients
  (fn [_ [_ {:keys [keywords filters]}]]
-   (let [filtervecs (mapv (fn [{:keys [field operator value]}]
-                            [field operator value])
+   (let [filtervecs (mapv #((juxt :field :operator :value) %)
                           filters)]
      {:dispatch-debounce {:id :search-patients
                           :event [:trigger-navigation
