@@ -895,9 +895,9 @@
                                    [:hover [:text :red-600]]
                                    :transition [:duration 200])
                          :type "button"
-                         :on-click #(dispatch [:delete-dynamic-fieldset
-                                               {:form-id :patient-filter-form
-                                                :index index}])}
+                         :on-click  #(dispatch [:delete-dynamic-fieldset
+                                                 {:form-id :patient-filter-form
+                                                  :index index}])}
                 "x"]]])
            filters))
      [secondary-button {:class-attr (c [:w 25])
@@ -1014,7 +1014,8 @@
                                 [:hover [:text :red-600]]
                                 :transition [:duration 200])
                       :type "button"
-                      :on-click #(prn id)}
+                      :on-click #((.stopPropagation %)
+                                  (dispatch [:delete-patient id]))}
              "x"]])
          @(subscribe [:patients-formatted]))]])
 ;)
