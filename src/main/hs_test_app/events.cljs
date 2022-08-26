@@ -108,7 +108,7 @@
                     (get query-params :keywords)
                     (get query-params :filters)]]]})
 (defmethod on-navigated :hs-test-app.views/create []
-  {:fx [[:dispatch [:set-patient-reg-form {}]]]})
+  {:fx [[:dispatch [:clear-patient-reg-form]]]})
 (defmethod on-navigated :hs-test-app.views/edit [_ path-params]
   {:fx [[:dispatch [:fetch-patient-by-id (:id path-params)]]]})
 (defmethod on-navigated :default [_ _] nil)
@@ -183,6 +183,11 @@
        (assoc :patient-in-edit res)
        (assoc-in [:form :patient-reg-form]
                  (dissoc res :id)))))
+
+(reg-event-db
+ :clear-patient-reg-form
+ (fn [db _]
+   (assoc-in db [:form :patient-reg-form] {})))
 
 (reg-event-fx
  :create-patient
