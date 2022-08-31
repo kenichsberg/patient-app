@@ -64,21 +64,64 @@
 (defn valid-filter [m]
   (let [get-error (fn [{:keys [field operator value]}]
                     (cond
-                      (empty? field) {:field :field
-                                      :error-type :required}
-                      (empty? operator) {:field :operator
-                                         :error-type :required}
-                      (empty? value) {:field :value
-                                      :error-type :required}
+                      (empty? field)
+                      {:field :field
+                       :error-type :required}
+
+                      (empty? operator)
+                      {:field :operator
+                       :error-type :required}
+
+                      (empty? value)
+                      {:field :value
+                       :error-type :required}
+
+                      ;; added
+                      (and (= field "first_name")
+                           (false? (:valid? (v/alphabets nil value))))
+                      {:field :value
+                       :error-type :alphabets}
+
+                      (and (= field "last_name")
+                           (false? (:valid? (v/alphabets nil value))))
+                      {:field :value
+                       :error-type :alphabets}
+
                       (and (= field "birth")
-                           (false? (:valid?
-                                    (v/valid-date-string nil value)))) {:field :value
-                                                                        :error-type :invalid-date}
+                           (false? (:valid? (v/date-string-filled nil value))))
+                      {:field :value
+                       :error-type :date-unfilled}
+
+                      (and (= field "birth")
+                           (false? (:valid? (v/date-string-numerical nil value))))
+                      {:field :value
+                       :error-type :date-numerical}
+
+                      (and (= field "birth")
+                           (false? (:valid? (v/valid-date-string nil value))))
+                      {:field :value
+                       :error-type :invalid-date}
+
+                      (and (= field "health_insurance_number")
+                           (false? (:valid? (v/numerical nil value))))
+                      {:field :value
+                       :error-type :numerical}
+
+                      (and (= field "health_insurance_number")
+                           (false? (:valid? (v/health-insurance-number nil value))))
+                      {:field :value
+                       :error-type :health_insurance_number}
+
                       :else nil))
+
         error-map (get-error m)
-        errortype->message {;:required (str (-> error :field name) " is required.")
-                            :required "Required."
-                            :invalid-date "Invalid date."}]
+        errortype->message {:required "Required."
+                            :alphabets "Please input alphabets."
+                            :date-unfilled "Please fill all input of date."
+                            :date-numerical "Please input numbers."
+                            :invalid-date "Invalid date."
+                            :numerical "Please input numbers."
+                            :health_insurance_number "Incorrect number of digits."}]
     {:valid? (nil? error-map)
      :field (:field error-map)
      :message (get errortype->message (:error-type error-map))}))
@@ -87,7 +130,10 @@
   {:patient-reg-form {:first_name [[v/required "First Name"] [v/alphabets]]
                       :last_name [[v/required "Last Name"] [v/alphabets]]
                       :gender [[v/required "Gender"]]
-                      :birth [[v/required "Birth"] [v/valid-date-string]]
+                      :birth [[v/required "Birth"]
+                              [v/date-string-filled]
+                              [v/date-string-numerical]
+                              [v/valid-date-string]]
                       :address [[v/required "Address"]]
                       :health_insurance_number [[v/required "Health Insurance Number"]
                                                 [v/numerical]
@@ -307,8 +353,8 @@
                              error-message]}]
   [input-frame {:label label
                 :frame-style frame-style
-                :fieldset-class (get-in class-attrs [:fieldset :class])
-                :legend-class (get-in class-attrs [:fieldset :class])
+                :fieldset-class (get-in class-attrs [:input-frame :fieldset :class])
+                :legend-class (get-in class-attrs [:input-frame :label :class])
                 :disable-default-fieldset-class? (get-in class-attrs
                                                          [:fieldset :disable-default?]
                                                          false)
@@ -318,7 +364,7 @@
                 :error? error?
                 :error-message error-message}
    [embedded-select {:field-name field-name
-                     :class-attr (get-in class-attrs [:fieldset :disable-default?])
+                     :class-attr (get-in class-attrs [:select :class])
                      :default-value default-value
                      :options options
                      :placeholder placeholder
@@ -730,7 +776,7 @@
                                     {:label "Contains" :value "gt"}])]
       [select-picker {:label ""
                       :frame-style :outline
-                      :class-attrs {:input-frame {:fieldset {:class (c [:w 30])
+                      :class-attrs {:input-frame {:fieldset {:class (c [:w 40])
                                                              :disable-default? false}
                                                   :label {:class (c :invisible)
                                                           :disable-default? false}}}
@@ -893,9 +939,11 @@
                                    [:hover [:text :red-600]]
                                    :transition [:duration 200])
                          :type "button"
+                         :style {:outline "2px solid transparent"
+                                 :outline-offset "2px"}
                          :on-click  #(dispatch [:delete-dynamic-fieldset
-                                                 {:form-id :patient-filter-form
-                                                  :index index}])}
+                                                {:form-id :patient-filter-form
+                                                 :index index}])}
                 "x"]]])
            filters))
      [secondary-button {:class-attr (c [:w 25])
@@ -1012,6 +1060,8 @@
                                 [:hover [:text :red-600]]
                                 :transition [:duration 200])
                       :type "button"
+                      :style {:outline "2px solid transparent"
+                              :outline-offset "2px"}
                       :on-click #((.stopPropagation %)
                                   (dispatch [:delete-patient id]))}
              "x"]])

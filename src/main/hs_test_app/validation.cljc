@@ -1,5 +1,5 @@
 (ns hs-test-app.validation
-  ;(:require [clojure.string :as str])
+  (:require [clojure.string :as str])
   #?(:clj (:import (java.time LocalDate)
                    (java.time.format DateTimeFormatter
                                      DateTimeParseException
@@ -214,6 +214,26 @@
                 str
                 (re-find #"^\d+$")
                 some?)
+   :field  field
+   :message "Please input numbers."})
+
+(defn date-string-filled [field value]
+  {:valid? (= 3
+              (->> (str/split value #"-" -1)
+                   (remove #(= "" %))
+                   count))
+   :field  field
+   :message "Please fill all input of date."})
+
+(defn date-string-numerical [field value]
+  {:valid? (->>  (str/split value #"-" -1)
+                 (reduce (fn [acc v]
+                           (and acc
+                                (->> v
+                                     str
+                                     (re-find #"^\d+$")
+                                     some?)))
+                         true))
    :field  field
    :message "Please input numbers."})
 
