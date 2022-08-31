@@ -268,7 +268,9 @@
    (cond-> db
      (= field-id :field) (assoc-in [:form form-id index] {:field value
                                                           :operator "eq"})
-     (and (not= field-id :field)
+     (and (= field-id :operator)
+          (= field-type "date")) (assoc-in [:form form-id index field-id] value)
+     (and (= field-id :value)
           (= field-type "date")) (update-in [:form form-id index field-id]
                                             update-date-str
                                             date-unit
