@@ -42,6 +42,5 @@
                 {:output-dir "dist/js"
                  :closure-defines {hs-test-app.config/API_URL "<production api url>"}}}
   :test {:target :karma
-          :ns-regexp "-test$"
-          :output-to "target/test.js"}
-  }}
+         :ns-regexp "-test$"
+         :output-to "target/test.js"}}}

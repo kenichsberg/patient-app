@@ -40,12 +40,6 @@
 
 (reg-fx
  :navigation
- ;; Since route-map/url seems to behave inconsistently,
- ;; inevitable to use only route-map/match.
- ;; For this reason, the 1st argment of this func isn't to be a page resource,
- ;; but a URL path without query string (which isn't the most efficient way,
- ;; because it requires to include path-params values as a part of URL path string,
- ;; and then, should parse it to get page resource and path-params).
  (fn [[base-path query-params old-url]]
    (let [q-str (utils/map->querystr query-params)
          url (str base-path q-str)]
@@ -59,13 +53,5 @@
 (reg-cofx
  :raw-url
  (fn [cofx _]
-    ;(let [path (.. js/window -location -pathname)
-    ;     q-str (.. js/window -location -search)
-    ;     ;matched (route-map/match path routes)
-    ;     ;route (:match matched)
-    ;     ;path-params (if (empty? (:params matched)) nil (:params matched))
-    ;     ;query-params (utils/querystr->map q-str)
-    ;     ]
-    ;  (assoc cofx :initial-url (str path q-str) )
    (let [href (.. js/window -location -href)]
      (assoc cofx :raw-url href))))

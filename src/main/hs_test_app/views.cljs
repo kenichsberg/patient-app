@@ -3,8 +3,6 @@
              [reagent.core :as r]
              [re-frame.core :refer [dispatch subscribe]]
              [stylo.rule :refer [rule defrules]]
-             ;[hs-test-app.events :as events]
-             ;[hs-test-app.subs :as subs]
              [hs-test-app.validation :as v])
   (:require-macros [stylo.core :refer [c]]))
 

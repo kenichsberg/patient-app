@@ -3,12 +3,9 @@
             [re-frame.core :refer [inject-cofx reg-event-db reg-event-fx reg-fx dispatch]]
             [clojure.string :as str]
             [day8.re-frame.http-fx]
-            ;[route-map.core :as route-map]
             [ajax.core :refer [json-request-format json-response-format]]
             [hs-test-app.config :as config]
             [hs-test-app.db :as db]
-            ;[hs-test-app.routes :refer [routes]]
-            ;[hs-test-app.fx :as fx]
             [hs-test-app.utils :as utils]
             [hs-test-app.validation :as v]))
 

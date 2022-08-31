@@ -66,11 +66,6 @@
  (fn [errors _]
    (boolean (seq errors))))
 
-;(reg-sub
-; :form-field-value
-; (fn [db [_ form-id field-id]]
-;   (get-in db [:form form-id field-id] "")))
-;; TODO
 (reg-sub
  :form-field-value
  (fn [[_ form-id] _]
